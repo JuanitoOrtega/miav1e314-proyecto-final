@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: modelo-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: modelo-api
+  template:
+    metadata:
+      labels:
+        app: modelo-api
+    spec:
+      containers:
+        - name: modelo-api
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
