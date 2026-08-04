@@ -51,8 +51,8 @@ Dos planos separados a propósito dentro del mismo VPS.
  │  ENTRADA TLS · nginx en el host + certbot (Let's Encrypt)           │
  │  ┌───────────────────────────────────────────────────────────────┐  │
  │  │  :80 ─redirige─▶ :443                                         │  │
- │  │    mlflow.<dominio> ─proxy─▶ 127.0.0.1:5000                   │  │
- │  │    api.<dominio>    ─proxy─▶ 127.0.0.1:30080                  │  │
+ │  │    mlflow.juanitodev.com ─proxy─▶ 127.0.0.1:5000              │  │
+ │  │    churn.juanitodev.com  ─proxy─▶ 127.0.0.1:30080             │  │
  │  └───────┬───────────────────────────────────┬───────────────────┘  │
  │          │                                   │                      │
  │  PLANO DE MLOps (Docker Compose)             │                      │
@@ -102,8 +102,8 @@ Kubernetes* consulta un Model Registry externo, que es el patrón real de la ind
 
 | Subdominio | Destino | Contenido |
 |---|---|---|
-| `mlflow.<dominio>` | `127.0.0.1:5000` | UI de MLflow y API de tracking |
-| `api.<dominio>` | `127.0.0.1:30080` | API de inferencia y UI web |
+| `mlflow.juanitodev.com` | `127.0.0.1:5000` | UI de MLflow y API de tracking |
+| `churn.juanitodev.com` | `127.0.0.1:30080` | API de inferencia y UI web |
 
 El dominio concreto se fija una sola vez en `infra/.env` (variable `DOMAIN_BASE`) y las
 plantillas de nginx lo consumen desde ahí, para que ninguna configuración lleve el dominio
@@ -139,7 +139,7 @@ invocación. La renovación automática viene con el `systemd timer` que instala
 se verifica con `certbot renew --dry-run` y la salida se guarda como evidencia.
 
 **Consecuencia para el resto del diseño.** La UI web y todas las demostraciones apuntan a
-`https://api.<dominio>` en lugar de a `http://<IP>:30080`. El acceso directo por IP y
+`https://churn.juanitodev.com` en lugar de a `http://<IP>:30080`. El acceso directo por IP y
 NodePort sigue funcionando desde dentro del VPS y se conserva a propósito: es el camino que
 se usa en los runbooks de Kubernetes para probar el balanceo sin que nginx interfiera.
 
@@ -150,7 +150,7 @@ porque la solución "obvia" rompe el clúster.
 
 | Quién | Camino | Protocolo |
 |---|---|---|
-| Personas (navegador) | `https://mlflow.<dominio>` → nginx → `127.0.0.1:5000` | HTTPS + auth básica |
+| Personas (navegador) | `https://mlflow.juanitodev.com` → nginx → `127.0.0.1:5000` | HTTPS + auth básica |
 | Pods de k3s | `http://<IP_INTERNA_NODO>:5000` directo | HTTP, tráfico que nunca sale del VPS |
 
 **Por qué los pods no pueden usar `127.0.0.1`.** Es el error clásico: publicar MLflow como
@@ -249,8 +249,8 @@ proyecto-final/
 │   ├── docker-compose.yml           MLflow Server + PostgreSQL
 │   ├── .env.example                 DOMAIN_BASE y credenciales (el .env real no se commitea)
 │   └── nginx/
-│       ├── mlflow.conf.template     vhost de mlflow.<dominio>
-│       └── api.conf.template        vhost de api.<dominio>
+│       ├── mlflow.conf.template     vhost de mlflow.juanitodev.com
+│       └── churn.conf.template        vhost de churn.juanitodev.com
 ├── docs/
 │   ├── PROYECTO.md                  Enunciado original (ya existe)
 │   ├── ARQUITECTURA.md              Documento de arquitectura para la entrega
@@ -611,7 +611,7 @@ mismo contenedor y por tanto del mismo `Service` de Kubernetes.
 
 Esto satisface el requisito de que el consumo de la API sea real y funcione contra el
 servicio desplegado en Kubernetes, no contra un proceso local: el navegador ataca
-`https://api.<dominio>`, que nginx enruta al NodePort del `Service` de Kubernetes.
+`https://churn.juanitodev.com`, que nginx enruta al NodePort del `Service` de Kubernetes.
 
 ---
 
@@ -675,7 +675,7 @@ surgen en la defensa:
 
 - **Todo el tráfico externo va cifrado por TLS** (§3.1), con certificados de Let's Encrypt
   y redirección forzada de `:80` a `:443`.
-- **MLflow queda accesible en `mlflow.<dominio>` sin autenticación de usuario.** Es
+- **MLflow queda accesible en `mlflow.juanitodev.com` sin autenticación de usuario.** Es
   necesario para la demo en vivo, pero implica que cualquiera con la URL podría ver los
   experimentos y, peor, **escribir** en el tracking server. Se mitiga con **autenticación
   básica de nginx** (`auth_basic`) sobre ese vhost: una sola directiva, credenciales que se
@@ -732,8 +732,8 @@ El proyecto está terminado cuando todo lo siguiente es cierto y está evidencia
 - [ ] Existe una gráfica temporal de degradación del ROC-AUC sobre lotes sucesivos.
 - [ ] `ARQUITECTURA.md` indica la versión desplegada y su `run_id`, y `/model-info`
       devuelve exactamente ese `run_id`.
-- [ ] La UI web ejecuta predicciones reales contra `https://api.<dominio>`.
-- [ ] `https://mlflow.<dominio>` y `https://api.<dominio>` cargan con certificado válido, y
+- [ ] La UI web ejecuta predicciones reales contra `https://churn.juanitodev.com`.
+- [ ] `https://mlflow.juanitodev.com` y `https://churn.juanitodev.com` cargan con certificado válido, y
       `http://` redirige a `https://`.
 - [ ] `certbot renew --dry-run` termina sin errores.
 - [ ] Desde fuera del VPS, `nc -zv <IP_PUBLICA> 5000` y `nc -zv <IP_PUBLICA> 30080`

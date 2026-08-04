@@ -887,7 +887,7 @@ git commit -m "feat: registro de versiones y gestión del alias champion"
 
 ```bash
 # Copiar a infra/.env y rellenar. El .env real NO se commitea.
-DOMAIN_BASE=ejemplo.com
+DOMAIN_BASE=juanitodev.com
 POSTGRES_USER=mlflow
 POSTGRES_PASSWORD=cambiame-por-algo-largo
 POSTGRES_DB=mlflow
@@ -959,7 +959,7 @@ En el panel del proveedor de dominio, dos registros `A` a la IP del VPS:
 
 Verificar (puede tardar minutos):
 ```bash
-dig +short api.$DOMAIN_BASE
+dig +short churn.$DOMAIN_BASE
 dig +short mlflow.$DOMAIN_BASE
 ```
 
@@ -1795,23 +1795,23 @@ git commit -m "docs: runbook de build y despliegue en k3s"
 # Tarea 12 — TLS y subdominios **[VPS]**
 
 **Files:**
-- Create: `infra/nginx/api.conf.template`, `infra/nginx/mlflow.conf.template`, `docs/runbooks/04-tls-y-subdominios.md`
+- Create: `infra/nginx/churn.conf.template`, `infra/nginx/mlflow.conf.template`, `docs/runbooks/04-tls-y-subdominios.md`
 
 **Interfaces:**
-- Produces: `https://api.<dominio>` y `https://mlflow.<dominio>` con certificado válido
+- Produces: `https://churn.juanitodev.com` y `https://mlflow.juanitodev.com` con certificado válido
 
-- [ ] **Step 1: Crear `infra/nginx/api.conf.template`**
+- [ ] **Step 1: Crear `infra/nginx/churn.conf.template`**
 
 ```nginx
 server {
     listen 80;
-    server_name api.DOMAIN_BASE;
+    server_name churn.DOMAIN_BASE;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name api.DOMAIN_BASE;
+    server_name churn.DOMAIN_BASE;
 
     # certbot añade aquí ssl_certificate y ssl_certificate_key
 
@@ -1870,7 +1870,7 @@ Responsable: integrante #5. Requiere los runbooks 01, 02 y 03 completados.
 
 ```bash
 source ~/proyecto-final/infra/.env
-dig +short api.$DOMAIN_BASE
+dig +short churn.$DOMAIN_BASE
 dig +short mlflow.$DOMAIN_BASE
 ```
 
@@ -1905,7 +1905,7 @@ sudo htpasswd -c /etc/nginx/.htpasswd docente
 
 ```bash
 cd ~/proyecto-final
-for sitio in api mlflow; do
+for sitio in churn mlflow; do
   sed "s/DOMAIN_BASE/$DOMAIN_BASE/g" infra/nginx/$sitio.conf.template \
     | sudo tee /etc/nginx/sites-available/$sitio.conf > /dev/null
   sudo ln -sf /etc/nginx/sites-available/$sitio.conf /etc/nginx/sites-enabled/$sitio.conf
@@ -1922,7 +1922,7 @@ sudo nginx -t
 ## 6. Emitir los certificados
 
 ```bash
-sudo certbot --nginx -d api.$DOMAIN_BASE -d mlflow.$DOMAIN_BASE \
+sudo certbot --nginx -d churn.$DOMAIN_BASE -d mlflow.$DOMAIN_BASE \
   --non-interactive --agree-tos -m <TU_CORREO> --redirect
 
 sudo nginx -t && sudo systemctl reload nginx
@@ -1938,9 +1938,9 @@ sudo systemctl list-timers | grep certbot
 ## 8. EVIDENCIA — verificación completa
 
 ```bash
-curl -sI  https://api.$DOMAIN_BASE/health
-curl -s   https://api.$DOMAIN_BASE/health
-curl -sI  http://api.$DOMAIN_BASE/health | head -1     # debe ser 301
+curl -sI  https://churn.$DOMAIN_BASE/health
+curl -s   https://churn.$DOMAIN_BASE/health
+curl -sI  http://churn.$DOMAIN_BASE/health | head -1     # debe ser 301
 curl -sI  https://mlflow.$DOMAIN_BASE/                 # debe ser 401 sin credenciales
 curl -sI -u docente:<PASS> https://mlflow.$DOMAIN_BASE/   # debe ser 200
 ```
@@ -3167,7 +3167,7 @@ git commit -m "feat: monitoreo de concept drift con criterio de reentrenamiento"
 
 **Interfaces:**
 - Consumes: `POST /predict` del mismo origen (Tarea 8)
-- Produces: UI accesible en `https://api.<dominio>/`
+- Produces: UI accesible en `https://churn.juanitodev.com/`
 
 - [ ] **Step 1: Crear `src/api/static/index.html`**
 
@@ -3334,7 +3334,7 @@ kubectl rollout status deployment/telco-churn-api
 
 - [ ] **Step 6: Verificar la UI en producción**
 
-Abrir `https://api.<dominio>/` en el navegador. Pulsar Predecir varias
+Abrir `https://churn.juanitodev.com/` en el navegador. Pulsar Predecir varias
 veces y comprobar que `served_by` cambia entre pods.
 
 - [ ] **Step 7: Commit**
@@ -3407,7 +3407,7 @@ Esperado: `/model-info` devuelve `"version":"2"` y el `run_id` del ganador.
 Responsable: integrante #1. El enunciado (§3.4) exige poder hacer estas
 cuatro cosas frente al docente. Ensayarlas.
 
-URL: `https://mlflow.<dominio>` (usuario `docente`, contraseña anotada en el
+URL: `https://mlflow.juanitodev.com` (usuario `docente`, contraseña anotada en el
 runbook 04).
 
 ## 1. Abrir el experimento y explicar cada run
@@ -3436,7 +3436,7 @@ apunta a la v2.
 
 ## 5. Cerrar el círculo de la trazabilidad
 
-Abrir en otra pestaña `https://api.<dominio>/model-info` y comparar el
+Abrir en otra pestaña `https://churn.juanitodev.com/model-info` y comparar el
 `run_id` que devuelve con el de la versión del registro. Son el mismo.
 
 **Esa es la trazabilidad que pide el enunciado**: el modelo que está
@@ -3560,7 +3560,7 @@ Recopilar, cada una con su captura o salida de terminal:
 | Experimento con los 6 runs | Captura de la UI de MLflow |
 | Vista de comparación de runs | Captura de la UI de MLflow |
 | Model Registry con 2 versiones y alias | Captura de la UI de MLflow |
-| `/model-info` con el mismo `run_id` | `curl https://api.<dominio>/model-info` |
+| `/model-info` con el mismo `run_id` | `curl https://churn.juanitodev.com/model-info` |
 | `pytest` completo en verde | Salida de terminal |
 | Puerta de drift en verde (lote 0) | Runbook 07, paso 2 |
 | Puerta de drift en rojo (lote 3) | Runbook 07, paso 3 |
@@ -3607,8 +3607,8 @@ runbooks.
 pytest -v
 python -m drift.check --batch data/batches/lote_0.csv ; echo "exit=$?"   # 0
 python -m drift.check --batch data/batches/lote_3.csv ; echo "exit=$?"   # 1
-curl -s https://api.<dominio>/model-info
-curl -sI https://mlflow.<dominio>/ | head -1                              # 401
+curl -s https://churn.juanitodev.com/model-info
+curl -sI https://mlflow.juanitodev.com/ | head -1                              # 401
 kubectl get pods
 ```
 
@@ -3649,7 +3649,7 @@ git push
 | `drift.check` lote 3 → exit 1 | T16 paso 5 |
 | Gráfica temporal de ROC-AUC | T17 paso 5 |
 | `/model-info` coincide con `ARQUITECTURA.md` | T19 paso 3, T20 paso 1 |
-| UI web contra `https://api.<dominio>` | T18 paso 6 |
+| UI web contra `https://churn.juanitodev.com` | T18 paso 6 |
 | Certificado válido y redirección 80→443 | T12 paso 4 |
 | `certbot renew --dry-run` sin errores | T12, runbook 04 paso 7 |
 | 5000 y 30080 cerrados desde fuera | T6 paso 8, T12 paso 4 |
