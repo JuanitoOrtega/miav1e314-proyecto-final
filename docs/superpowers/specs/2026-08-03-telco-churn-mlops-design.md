@@ -28,7 +28,8 @@ califica y recorta agresivamente lo que no.
 | Infraestructura | VPS Ubuntu 24.04 (4 vCore / 8 GB / 256 GB NVMe) | Recurso ya disponible del equipo |
 | Kubernetes | k3s, un solo nodo | K8s ligero, adecuado para un nodo, instalación en un comando |
 | MLflow | Docker Compose, **fuera** de k3s | Es infraestructura de soporte, no la carga desplegada |
-| Exposición | NodePort sobre IP pública, sin TLS | El plazo no admite gastar medio día en certificados |
+| Exposición | Subdominios con HTTPS, vía nginx + certbot en el host | El equipo ya tiene dominio y sabe operar certbot; da una demo profesional y evita avisos del navegador |
+| Entrada TLS | nginx en el host, **no** Traefik de k3s | Un único punto de entrada cubre los dos planos, incluido MLflow que vive fuera del clúster |
 | Distribución de imagen | `docker build` en el VPS + `k3s ctr images import` | Cero infraestructura adicional, cero credenciales |
 | Detección de drift | Implementación propia con `scipy` + `pytest` | La rúbrica pide justificar cada prueba y cada umbral; una librería opaca no se puede defender |
 | UI extra | HTML + JavaScript servido por la propia API | Elimina un Dockerfile, un manifest y el problema de CORS (mismo origen) |
@@ -41,34 +42,41 @@ califica y recorta agresivamente lo que no.
 Dos planos separados a propósito dentro del mismo VPS.
 
 ```
-                        VPS Ubuntu 24.04 — 4 vCore / 8 GB
-  ┌───────────────────────────────────────────────────────────────────┐
-  │                                                                   │
-  │   PLANO DE MLOps  (Docker Compose)                                │
-  │   ┌──────────────────────┐      ┌──────────────────────┐          │
-  │   │  MLflow Server :5000 │─────▶│  PostgreSQL :5432    │          │
-  │   │  --serve-artifacts   │      │  (backend store)     │          │
-  │   └──────────┬───────────┘      └──────────────────────┘          │
-  │              │ volumen /mlflow/artifacts                          │
-  │              │                                                    │
-  │              │  models:/telco-churn@champion                      │
-  │              │  (descarga al arrancar cada pod)                   │
-  │   ═══════════╪════════════════════════════════════════════════    │
-  │              │                                                    │
-  │   PLANO DE SERVICIO  (k3s)                                        │
-  │              │                                                    │
-  │   ┌──────────▼──────────────────────────────────────────┐         │
-  │   │  Service  telco-churn-api   NodePort :30080         │         │
-  │   └──────┬───────────────┬───────────────┬──────────────┘         │
-  │          │               │               │                        │
-  │      ┌───▼───┐       ┌───▼───┐       ┌───▼───┐                    │
-  │      │ pod 1 │       │ pod 2 │       │ pod 3 │   FastAPI+modelo   │
-  │      └───────┘       └───────┘       └───────┘   + UI estática    │
-  │                                                                   │
-  └───────────────────────────────────────────────────────────────────┘
-             ▲                                    ▲
-             │ :5000  MLflow UI                   │ :30080  API + UI
-             │        (demo en vivo)              │
+                             Internet
+                                │  HTTPS :443
+                                ▼
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │                 VPS Ubuntu 24.04 — 4 vCore / 8 GB                   │
+ │                                                                     │
+ │  ENTRADA TLS · nginx en el host + certbot (Let's Encrypt)           │
+ │  ┌───────────────────────────────────────────────────────────────┐  │
+ │  │  :80 ─redirige─▶ :443                                         │  │
+ │  │    mlflow.<dominio> ─proxy─▶ 127.0.0.1:5000                   │  │
+ │  │    api.<dominio>    ─proxy─▶ 127.0.0.1:30080                  │  │
+ │  └───────┬───────────────────────────────────┬───────────────────┘  │
+ │          │                                   │                      │
+ │  PLANO DE MLOps (Docker Compose)             │                      │
+ │  ┌───────▼───────────────┐   ┌──────────────┐│                      │
+ │  │ MLflow Server :5000   │──▶│ PostgreSQL   ││                      │
+ │  │ --serve-artifacts     │   │ :5432 interno││                      │
+ │  │ vol /mlflow/artifacts │   └──────────────┘│                      │
+ │  └───────▲───────────────┘                   │                      │
+ │          │ models:/telco-churn@champion      │                      │
+ │          │ (cada pod descarga al arrancar)   │                      │
+ │  ════════╪═══════════════════════════════════╪═══════════════════   │
+ │          │  PLANO DE SERVICIO (k3s)          │                      │
+ │          │                                   ▼                      │
+ │          │        ┌─────────────────────────────────────┐           │
+ │          │        │ Service telco-churn-api             │           │
+ │          │        │ NodePort :30080                     │           │
+ │          │        └────┬──────────┬──────────┬──────────┘           │
+ │          │             │          │          │                      │
+ │          │         ┌───▼───┐  ┌───▼───┐  ┌───▼───┐                  │
+ │          └─────────┤ pod 1 │  │ pod 2 │  │ pod 3 │                  │
+ │                    └───────┘  └───────┘  └───────┘                  │
+ │                      FastAPI + modelo + UI estática                 │
+ │                                                                     │
+ └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Por qué MLflow queda fuera del clúster
@@ -80,11 +88,99 @@ Kubernetes* consulta un Model Registry externo, que es el patrón real de la ind
 
 ### Puertos
 
-| Puerto | Servicio | Uso |
+| Puerto | Servicio | Expuesto a Internet |
 |---|---|---|
-| 5000 | MLflow UI y API de tracking | Demo en vivo de la Fase 1 |
-| 30080 | API de inferencia + UI web | Demo de Fases 2, 3 y extras |
-| 5432 | PostgreSQL | Interno, **no** se expone al exterior |
+| 443 | nginx (TLS) | **Sí** — única puerta de entrada |
+| 80 | nginx (redirección a 443 + reto ACME de certbot) | **Sí** |
+| 5000 | MLflow UI y API de tracking | No — solo `127.0.0.1`, se alcanza vía nginx |
+| 30080 | API de inferencia + UI web | No — solo `127.0.0.1`, se alcanza vía nginx |
+| 5432 | PostgreSQL | No — solo red interna de Docker |
+
+### 3.1 Exposición pública con TLS
+
+**Subdominios.** Dos registros `A` apuntando a la IP del VPS:
+
+| Subdominio | Destino | Contenido |
+|---|---|---|
+| `mlflow.<dominio>` | `127.0.0.1:5000` | UI de MLflow y API de tracking |
+| `api.<dominio>` | `127.0.0.1:30080` | API de inferencia y UI web |
+
+El dominio concreto se fija una sola vez en `infra/.env` (variable `DOMAIN_BASE`) y las
+plantillas de nginx lo consumen desde ahí, para que ninguna configuración lleve el dominio
+escrito a mano en varios sitios.
+
+**Por qué dos subdominios y no rutas de un mismo host.** Servir MLflow bajo un subpath
+(`/mlflow`) es notoriamente problemático: la UI genera URLs absolutas para sus recursos
+estáticos y llamadas a su API, y termina exigiendo reescrituras frágiles que se rompen
+entre versiones. Dos subdominios cuestan un registro DNS más y eliminan la clase entera de
+problema.
+
+**Por qué nginx en el host y no el Ingress de Traefik de k3s.** MLflow vive **fuera** del
+clúster (§3), así que un Ingress de Kubernetes no lo cubriría sin inventar un `Service` de
+tipo `ExternalName` apuntando de vuelta al host — una pieza rara de explicar en la defensa.
+nginx en el host es un único punto de entrada que cubre los dos planos con la misma
+herramienta y el mismo certificado, y certbot es la herramienta que el equipo ya sabe
+operar.
+
+**Conflicto de puertos que hay que resolver antes de instalar nada.** k3s incluye Traefik y
+**por defecto ocupa los puertos 80 y 443 del host**. Si se instala así, nginx no puede
+arrancar y —peor— el reto HTTP-01 de certbot falla sin un diagnóstico obvio. Por eso k3s se
+instala con:
+
+```bash
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik" sh -
+```
+
+No se pierde nada, porque la exposición se hace por NodePort más nginx. Esta decisión se
+toma en el runbook `02`, **antes** de que ningún otro paso dependa de ella.
+
+**Certificados.** Se emiten con `certbot --nginx` para ambos subdominios en una sola
+invocación. La renovación automática viene con el `systemd timer` que instala el paquete;
+se verifica con `certbot renew --dry-run` y la salida se guarda como evidencia.
+
+**Consecuencia para el resto del diseño.** La UI web y todas las demostraciones apuntan a
+`https://api.<dominio>` en lugar de a `http://<IP>:30080`. El acceso directo por IP y
+NodePort sigue funcionando desde dentro del VPS y se conserva a propósito: es el camino que
+se usa en los runbooks de Kubernetes para probar el balanceo sin que nginx interfiera.
+
+### 3.2 Dos caminos hacia MLflow, y por qué no puede haber uno solo
+
+Este punto es sutil y hay que tenerlo claro antes de escribir el `docker-compose.yml`,
+porque la solución "obvia" rompe el clúster.
+
+| Quién | Camino | Protocolo |
+|---|---|---|
+| Personas (navegador) | `https://mlflow.<dominio>` → nginx → `127.0.0.1:5000` | HTTPS + auth básica |
+| Pods de k3s | `http://<IP_INTERNA_NODO>:5000` directo | HTTP, tráfico que nunca sale del VPS |
+
+**Por qué los pods no pueden usar `127.0.0.1`.** Es el error clásico: publicar MLflow como
+`127.0.0.1:5000:5000` en Docker Compose parece lo más seguro, pero entonces **los pods de
+k3s no lo alcanzan**. El tráfico de un pod hacia el host llega por la interfaz de red de
+flannel (`cni0`), no por loopback, así que un servicio atado a `127.0.0.1` es invisible
+desde el clúster y todos los pods quedan atascados sin poder cargar el modelo.
+
+**Por qué los pods tampoco usan el subdominio HTTPS.** Sería un único camino más elegante,
+pero obliga al tráfico a salir a Internet y volver (*hairpin NAT*), que falla en algunos
+proveedores, y además exigiría inyectar las credenciales de la auth básica en un `Secret`.
+Complejidad y un modo de fallo nuevo a cambio de elegancia. No compensa con este plazo.
+
+**Cómo se cierra el puerto de verdad.** MLflow se publica en `0.0.0.0:5000` para que los
+pods lo alcancen, y el acceso público se bloquea a nivel de firewall. Aquí aparece la
+segunda trampa: **Docker inserta sus propias reglas de iptables y las publicaciones de
+puertos se saltan `ufw` por completo**. Un `ufw deny 5000` da falsa sensación de seguridad
+mientras el puerto sigue abierto a Internet. La solución correcta es una regla explícita en
+la cadena `DOCKER-USER`, que sí se evalúa antes:
+
+```bash
+# Permitir solo pods de k3s (10.42.0.0/16) y el propio host; descartar el resto
+iptables -I DOCKER-USER -p tcp --dport 5000 -s 10.42.0.0/16 -j RETURN
+iptables -I DOCKER-USER -p tcp --dport 5000 -s 127.0.0.1     -j RETURN
+iptables -A DOCKER-USER -p tcp --dport 5000                  -j DROP
+```
+
+Se persiste con `iptables-persistent` y **se verifica desde fuera del VPS** con
+`nc -zv <IP_PUBLICA> 5000`, que debe fallar. Esa verificación va a `EVIDENCIAS.md`: es la
+diferencia entre creer que el puerto está cerrado y haberlo comprobado.
 
 ---
 
@@ -150,7 +246,11 @@ proyecto-final/
 │   ├── deployment.yaml              3 réplicas, probes, límites de recursos
 │   └── service.yaml                 NodePort 30080
 ├── infra/
-│   └── docker-compose.yml           MLflow Server + PostgreSQL
+│   ├── docker-compose.yml           MLflow Server + PostgreSQL
+│   ├── .env.example                 DOMAIN_BASE y credenciales (el .env real no se commitea)
+│   └── nginx/
+│       ├── mlflow.conf.template     vhost de mlflow.<dominio>
+│       └── api.conf.template        vhost de api.<dominio>
 ├── docs/
 │   ├── PROYECTO.md                  Enunciado original (ya existe)
 │   ├── ARQUITECTURA.md              Documento de arquitectura para la entrega
@@ -158,12 +258,13 @@ proyecto-final/
 │   ├── REPARTO.md                   Tabla de quién construyó qué
 │   ├── evidencias/                  Imágenes y capturas referenciadas por EVIDENCIAS.md
 │   ├── runbooks/                    Comandos paso a paso, ejecutables por el equipo
-│   │   ├── 01-bootstrap-vps.md          MLflow + PostgreSQL + firewall
-│   │   ├── 02-instalar-k3s.md           k3s y verificación de red hacia MLflow
+│   │   ├── 01-bootstrap-vps.md          Docker, MLflow + PostgreSQL, firewall
+│   │   ├── 02-instalar-k3s.md           k3s con --disable=traefik y verificación de red
 │   │   ├── 03-build-y-deploy.md         docker build → ctr import → kubectl apply
-│   │   ├── 04-demos-kubernetes.md       Las 4 demostraciones exigidas
-│   │   ├── 05-demo-mlflow.md            Guion de la demo en vivo de la UI de MLflow
-│   │   └── 06-demo-drift.md             Ejecución de la puerta de drift en verde y rojo
+│   │   ├── 04-tls-y-subdominios.md      DNS, nginx y certbot para los dos subdominios
+│   │   ├── 05-demos-kubernetes.md       Las 4 demostraciones exigidas
+│   │   ├── 06-demo-mlflow.md            Guion de la demo en vivo de la UI de MLflow
+│   │   └── 07-demo-drift.md             Ejecución de la puerta de drift en verde y rojo
 │   └── superpowers/specs/           Este documento
 ├── Dockerfile
 ├── requirements.txt                 Todo fijado con ==, incluido mlflow
@@ -252,7 +353,7 @@ sin ser detectado) supera al de un falso positivo.
 ### 6.6 Preparación para la demo en vivo de la UI de MLflow
 
 El enunciado (§3.4) exige poder hacer cuatro cosas frente al docente. El runbook
-`docs/runbooks/05-demo-mlflow.md` las deja ensayadas paso a paso:
+`docs/runbooks/06-demo-mlflow.md` las deja ensayadas paso a paso:
 
 1. Abrir el experimento y explicar qué representa cada run.
 2. Ordenar y filtrar los runs por ROC-AUC.
@@ -510,7 +611,7 @@ mismo contenedor y por tanto del mismo `Service` de Kubernetes.
 
 Esto satisface el requisito de que el consumo de la API sea real y funcione contra el
 servicio desplegado en Kubernetes, no contra un proceso local: el navegador ataca
-`http://<IP_VPS>:30080`, que es el NodePort del `Service`.
+`https://api.<dominio>`, que nginx enruta al NodePort del `Service` de Kubernetes.
 
 ---
 
@@ -518,11 +619,11 @@ servicio desplegado en Kubernetes, no contra un proceso local: el navegador atac
 
 | # | Rol | Componentes | Entregable verificable |
 |---|---|---|---|
-| 1 | Modelo y MLflow | `src/features.py`, `src/train.py`, `src/register.py`, runbook `05` | 6 runs, 2 versiones registradas, alias `@champion` |
+| 1 | Modelo y MLflow | `src/features.py`, `src/train.py`, `src/register.py`, runbook `06` | 6 runs, 2 versiones registradas, alias `@champion` |
 | 2 | Contenedor y API | `src/api/`, `Dockerfile`, `requirements.txt` | Imagen que levanta y responde sin pasos manuales |
-| 3 | Kubernetes | `k8s/`, runbooks `02`, `03`, `04` | Las 4 demostraciones con evidencia capturada |
-| 4 | Drift | `drift/` completo, runbook `06` | Puerta en verde y rojo, suite en verde, gráfica temporal |
-| 5 | Infraestructura, UI y documentación | `infra/`, `src/api/static/`, runbook `01`, `docs/` | MLflow operativo, UI funcional, `ARQUITECTURA.md` |
+| 3 | Kubernetes | `k8s/`, runbooks `02`, `03`, `05` | Las 4 demostraciones con evidencia capturada |
+| 4 | Drift | `drift/` completo, runbook `07` | Puerta en verde y rojo, suite en verde, gráfica temporal |
+| 5 | Infraestructura, TLS, UI y documentación | `infra/`, `src/api/static/`, runbooks `01` y `04`, `docs/` | MLflow operativo, HTTPS en ambos subdominios, UI funcional, `ARQUITECTURA.md` |
 
 Cada integrante trabaja en su propia rama y commitea con su autoría de git, de modo que el
 historial constituya la evidencia del reparto declarado, que es lo que el enunciado dice
@@ -538,9 +639,9 @@ que los cinco recorran el sistema completo y se hagan preguntas cruzadas.
 
 | Día | Camino crítico | Paralelo |
 |---|---|---|
-| **1** | **#5** levanta MLflow + PostgreSQL y k3s en el VPS. **#1** prepara los datos y el baseline. | **#2** monta FastAPI contra un modelo dummy. **#4** define el contrato del baseline. |
+| **1** | **#5** crea los registros DNS, levanta MLflow + PostgreSQL y k3s (`--disable=traefik`). **#1** prepara los datos y el baseline. | **#2** monta FastAPI contra un modelo dummy. **#4** define el contrato del baseline. |
 | **2** | **#1** ejecuta los 6 runs, registra v1 y v2, fija el alias. **#2** conecta la API al registry real. | **#3** escribe los manifiestos de Kubernetes. |
-| **3** | **Despliegue end-to-end real.** **#3** ejecuta y captura las 4 demostraciones. | **#4** implementa los detectores y los tests. |
+| **3** | **Despliegue end-to-end real.** **#3** ejecuta y captura las 4 demostraciones. **#5** monta nginx + certbot y deja los dos subdominios en HTTPS. | **#4** implementa los detectores y los tests. |
 | **4** | **#4** cierra la gráfica temporal y el criterio de reentrenamiento. | **#5** implementa la UI HTML+JS. |
 | **5** | `ARQUITECTURA.md`, `EVIDENCIAS.md`, `REPARTO.md`, archivo comprimido de entrega. | Revisión cruzada de código. |
 | **6** | Colchón y ensayo de defensa cruzada. | — |
@@ -558,9 +659,11 @@ servicio.
 
 | Riesgo | Mitigación |
 |---|---|
-| Los pods de k3s no alcanzan MLflow en el host | Se usa la IP del nodo, no `localhost`. Se valida el día 1 con un `curl` desde un pod de prueba. |
+| Los pods de k3s no alcanzan MLflow en el host | MLflow se publica en `0.0.0.0`, no en `127.0.0.1` (§3.2). Se valida el día 1 con un `curl` desde un pod de prueba. |
 | MLflow arranca sin `--serve-artifacts` y los pods no descargan el modelo | Bandera incluida desde el primer arranque (§6.7). |
-| El firewall del VPS bloquea 5000 o 30080 | Se abren y verifican el día 1, antes de que nada dependa de ello. |
+| Traefik de k3s ocupa los puertos 80 y 443 y certbot falla sin diagnóstico claro | k3s se instala con `--disable=traefik` desde el principio (§3.1). |
+| `ufw` no cierra el puerto 5000 porque Docker se lo salta | Regla explícita en la cadena `DOCKER-USER`, verificada desde fuera del VPS (§3.2). |
+| El DNS de los subdominios no ha propagado cuando se ejecuta certbot | Los registros `A` se crean el **día 1**, aunque el TLS se configure el día 3. |
 
 ---
 
@@ -570,15 +673,20 @@ Este es un proyecto académico con vida corta y las siguientes decisiones se tom
 conciencia, no por descuido. Se documentan en `ARQUITECTURA.md` para poder responderlas si
 surgen en la defensa:
 
-- **MLflow queda expuesto en el puerto 5000 sin autenticación.** Es necesario para la demo
-  en vivo. En un entorno real iría detrás de un proxy inverso con autenticación básica o
-  SSO, y nunca abierto a Internet.
-- **Sin TLS.** El plazo no lo admite y no hay datos personales reales en juego: el dataset
-  es público y sintético en su origen.
-- **PostgreSQL no se expone al exterior**; solo es alcanzable desde la red interna de
-  Docker.
-- **Se recomienda apagar los servicios tras la defensa** o restringir los puertos 5000 y
-  30080 por IP de origen mediante `ufw`.
+- **Todo el tráfico externo va cifrado por TLS** (§3.1), con certificados de Let's Encrypt
+  y redirección forzada de `:80` a `:443`.
+- **MLflow queda accesible en `mlflow.<dominio>` sin autenticación de usuario.** Es
+  necesario para la demo en vivo, pero implica que cualquiera con la URL podría ver los
+  experimentos y, peor, **escribir** en el tracking server. Se mitiga con **autenticación
+  básica de nginx** (`auth_basic`) sobre ese vhost: una sola directiva, credenciales que se
+  comparten con el docente durante la defensa. En un entorno real iría detrás de SSO.
+- **`ufw` permite únicamente `22`, `80` y `443`.** Los puertos `5000` y `30080` no se
+  publican al exterior; se alcanzan solo a través de nginx o desde dentro del VPS.
+- **PostgreSQL no se expone en absoluto**; solo es alcanzable desde la red interna de
+  Docker, y sus credenciales viven en `infra/.env`, que **no se commitea** (sí se commitea
+  `.env.example`).
+- **Se recomienda apagar los servicios tras la defensa**, o dejar `ufw` restringido por IP
+  de origen.
 
 ---
 
@@ -587,9 +695,9 @@ surgen en la defensa:
 Recortado deliberadamente por el plazo de menos de una semana. Se enumera aquí para poder
 responder "sí, lo consideramos, y esta fue la razón" en lugar de "no se nos ocurrió":
 
-- **TLS y dominio propio.** Medio día de trabajo y un punto de fallo en vivo, cero puntos
-  en la rúbrica.
 - **CI/CD con GitHub Actions.** Valioso, pero no está en la rúbrica.
+- **Ingress de Kubernetes con cert-manager.** Se resuelve TLS con nginx en el host porque
+  MLflow vive fuera del clúster (§3.1). Un Ingress solo cubriría la mitad del sistema.
 - **Prometheus y Grafana.** La observabilidad exigida se cubre con las probes de
   Kubernetes y el monitoreo de drift.
 - **MLflow dentro de k3s.** Justificado en §3.
@@ -624,5 +732,10 @@ El proyecto está terminado cuando todo lo siguiente es cierto y está evidencia
 - [ ] Existe una gráfica temporal de degradación del ROC-AUC sobre lotes sucesivos.
 - [ ] `ARQUITECTURA.md` indica la versión desplegada y su `run_id`, y `/model-info`
       devuelve exactamente ese `run_id`.
-- [ ] La UI web ejecuta predicciones reales contra `http://<IP_VPS>:30080`.
+- [ ] La UI web ejecuta predicciones reales contra `https://api.<dominio>`.
+- [ ] `https://mlflow.<dominio>` y `https://api.<dominio>` cargan con certificado válido, y
+      `http://` redirige a `https://`.
+- [ ] `certbot renew --dry-run` termina sin errores.
+- [ ] Desde fuera del VPS, `nc -zv <IP_PUBLICA> 5000` y `nc -zv <IP_PUBLICA> 30080`
+      **fallan** (los puertos internos no están expuestos).
 - [ ] `REPARTO.md` existe y el historial de git es coherente con lo declarado.
