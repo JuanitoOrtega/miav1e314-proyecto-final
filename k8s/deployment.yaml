@@ -17,3 +17,9 @@ spec:
           image: nginx:alpine
           ports:
             - containerPort: 80
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Servidor atendido por el Pod: $HOSTNAME" > /usr/share/nginx/html/index.html
+              nginx -g "daemon off;"
