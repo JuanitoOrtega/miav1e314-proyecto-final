@@ -2120,7 +2120,7 @@ git commit -m "feat: scripts y runbook de las 4 demostraciones de Kubernetes"
   - `psi_detector(baseline, current, name, threshold=0.25) -> DriftResult`
   - `chi2_detector(baseline, current, name, alpha=0.05) -> DriftResult`
   - `detect_data_drift(baseline_df, current_df) -> list[DriftResult]`
-  - Constantes: `ALPHA = 0.05`, `KS_MIN_EFFECT = 0.10`, `PSI_ALERT = 0.25`, `PSI_WARN = 0.10`
+  - Constantes: `ALPHA = 0.05`, `KS_MIN_EFFECT = 0.10`, `CRAMERS_V_MIN = 0.10`, `PSI_ALERT = 0.25`, `PSI_WARN = 0.10`
 
 - [ ] **Step 1: Escribir los tests**
 
@@ -2157,10 +2157,13 @@ def test_psi_valor_calculado_a_mano_cambio_grande():
 
     PSI = 0.4*ln(1.8) + (-0.4)*ln(0.2) = 0.8788898
     Muy por encima de 0.25: cambio significativo.
+
+    Tolerancia 1e-4 y no 1e-6: el epsilon anti división-por-cero de la
+    implementación perturba el valor exacto en ~3.5e-6.
     """
     base = pd.Series(["A"] * 50 + ["B"] * 50)
     actual = pd.Series(["A"] * 90 + ["B"] * 10)
-    assert psi(base, actual) == pytest.approx(0.8788898, abs=1e-6)
+    assert psi(base, actual) == pytest.approx(0.8788898, abs=1e-4)
 
 
 def test_psi_de_una_serie_contra_si_misma_es_cero():
@@ -2293,6 +2296,11 @@ ALPHA = 0.05
 # "estadísticamente significativo" de "prácticamente relevante".
 KS_MIN_EFFECT = 0.10
 
+# CRAMERS_V_MIN: misma lógica que KS_MIN_EFFECT pero para Chi². Es un
+# umbral propio porque V y D son estadísticos distintos, y la tabla de la
+# puerta debe mostrar cada estadístico contra su umbral real.
+CRAMERS_V_MIN = 0.10
+
 # PSI: escala convencional de las scorecards crediticias, donde nació el
 # índice. <0.10 estable, 0.10-0.25 moderado, >0.25 cambio significativo.
 PSI_WARN = 0.10
@@ -2415,17 +2423,19 @@ def chi2_detector(
     tabla = tabla[:, columnas_no_vacias]
 
     if tabla.shape[1] < 2:
-        return DriftResult(name, "chi2", 0.0, 1.0, alpha, False)
+        return DriftResult(name, "chi2", 0.0, 1.0, CRAMERS_V_MIN, False)
 
     _, p_valor = stats.chi2_contingency(tabla, correction=False)[:2]
     v = cramers_v(tabla)
+    # threshold es CRAMERS_V_MIN y no alpha: statistic es la V de Cramér,
+    # así que la tabla de la puerta compara cada cosa con su propio umbral.
     return DriftResult(
         variable=name,
         test="chi2",
         statistic=v,
         p_value=float(p_valor),
-        threshold=alpha,
-        drifted=bool(p_valor < alpha and v > KS_MIN_EFFECT),
+        threshold=CRAMERS_V_MIN,
+        drifted=bool(p_valor < alpha and v > CRAMERS_V_MIN),
     )
 
 
@@ -2574,6 +2584,20 @@ def test_generate_all_batches_crea_6_ficheros(datos, tmp_path):
     assert len(rutas) == 6
     assert all(p.exists() for p in rutas)
     assert rutas[0].name == "lote_0.csv"
+
+
+def test_los_lotes_4_y_5_llevan_concept_drift(datos, tmp_path):
+    """Regresión: el shift categórico elimina el subgrupo 'Two year', así que
+    el concept drift debe inyectarse ANTES. Si el orden se invirtiera, estos
+    lotes saldrían sin ninguna etiqueta cambiada y la gráfica del monitor no
+    mostraría la degradación que dispara la alarma."""
+    _, reserva = datos
+    rutas = generate_all_batches(reserva, out_dir=tmp_path, n=300)
+    lote_0 = pd.read_csv(rutas[0])
+    for indice in (4, 5):
+        lote = pd.read_csv(rutas[indice])
+        cambiadas = (lote_0[TARGET].to_numpy() != lote[TARGET].to_numpy()).sum()
+        assert cambiadas > 0, f"lote_{indice} no tiene etiquetas invertidas"
 ```
 
 - [ ] **Step 2: Ejecutar y verificar que falla**
@@ -2686,18 +2710,22 @@ def generate_all_batches(
     base = make_clean_batch(df, n=n)
     rutas: list[Path] = []
 
+    # En los lotes 4 y 5 el concept drift se aplica PRIMERO. El shift
+    # categórico convierte a Month-to-month todas las filas que no lo son,
+    # así que si se aplicara antes, el subgrupo 'Two year' quedaría vacío y
+    # inject_concept_drift no invertiría ninguna etiqueta.
     lotes = [
         base,
         inject_concept_drift(base, flip_pct=0.10),
         inject_concept_drift(base, flip_pct=0.20),
         inject_categorical_shift(inject_numeric_shift(base, pct=0.25), pct=0.5),
-        inject_concept_drift(
-            inject_categorical_shift(inject_numeric_shift(base, pct=0.35), pct=0.6),
-            flip_pct=0.40,
+        inject_categorical_shift(
+            inject_numeric_shift(inject_concept_drift(base, flip_pct=0.40), pct=0.35),
+            pct=0.6,
         ),
-        inject_concept_drift(
-            inject_categorical_shift(inject_numeric_shift(base, pct=0.50), pct=0.8),
-            flip_pct=0.50,
+        inject_categorical_shift(
+            inject_numeric_shift(inject_concept_drift(base, flip_pct=0.50), pct=0.50),
+            pct=0.8,
         ),
     ]
 
@@ -2727,7 +2755,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: Ejecutar los tests**
 
 Run: `pytest drift/tests/test_generators.py -v`
-Esperado: 9 tests PASS
+Esperado: 10 tests PASS
 
 - [ ] **Step 5: Generar los lotes reales**
 
@@ -3451,6 +3479,18 @@ sirviendo peticiones y el experimento exacto que lo produjo.
 Responsable: integrante #4. Presentar en este orden: primero la suite,
 luego la puerta.
 
+## 0. Generar los lotes
+
+`data/batches/` NO está versionado (está en el `.gitignore`): hay que
+generarlos en la máquina donde se hace la demo antes de empezar.
+
+```bash
+python -m drift.generators
+ls data/batches/
+```
+
+Esperado: `lote_0.csv` … `lote_5.csv`
+
 ## 1. La suite de tests — todo verde
 
 ```bash
@@ -3473,6 +3513,18 @@ Esperado: `VERDE — sin deriva significativa`, `exit=0`
 python -m drift.check --batch data/batches/lote_3.csv ; echo "exit=$?"
 ```
 Esperado: `ROJO — deriva detectada en N variable(s)`, `exit=1`
+
+## 3b. (Opcional, alto impacto) La puerta es ciega al concept drift
+
+Los lotes 1 y 2 llevan SOLO concept drift: las entradas son idénticas al
+origen, así que la puerta de data drift sale **verde** sobre ellos aunque
+el modelo ya se esté degradando (se ve en la gráfica del paso 4).
+
+```bash
+python -m drift.check --batch data/batches/lote_1.csv ; echo "exit=$?"
+```
+Esperado: `VERDE`, `exit=0` — y ese es el argumento: *"por eso el data
+drift no basta y monitoreamos también la métrica del modelo"*.
 
 ## 4. Concept drift y criterio de reentrenamiento
 
