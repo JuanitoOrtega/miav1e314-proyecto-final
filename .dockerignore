@@ -1,0 +1,10 @@
+.git/
+.venv/
+.pytest_cache/
+__pycache__/
+mlruns/
+data/batches/
+docs/
+tests/
+drift/tests/
+*.md
