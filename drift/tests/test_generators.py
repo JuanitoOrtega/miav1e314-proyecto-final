@@ -89,15 +89,25 @@ def test_generate_all_batches_crea_6_ficheros(datos, tmp_path):
     assert rutas[0].name == "lote_0.csv"
 
 
-def test_los_lotes_4_y_5_llevan_concept_drift(datos, tmp_path):
-    """Regresión: el shift categórico elimina el subgrupo 'Two year', así que
-    el concept drift debe inyectarse ANTES. Si el orden se invirtiera, estos
-    lotes saldrían sin ninguna etiqueta cambiada y la gráfica del monitor no
-    mostraría la degradación que dispara la alarma."""
+def test_todos_los_lotes_derivados_llevan_concept_drift(datos, tmp_path):
+    """Regresión doble sobre la construcción de los lotes.
+
+    1. El shift categórico elimina el subgrupo 'Two year', así que el
+       concept drift debe inyectarse ANTES o no invertiría ninguna etiqueta.
+    2. Los lotes 1 a 5 llevan inversión creciente y SOSTENIDA (spec §9.4).
+       Si un lote intermedio se saltara la inversión, rompería la racha de
+       3 lotes consecutivos y la alarma de reentrenamiento nunca se
+       dispararía en la corrida real del monitor.
+    """
     _, reserva = datos
     rutas = generate_all_batches(reserva, out_dir=tmp_path, n=300)
     lote_0 = pd.read_csv(rutas[0])
-    for indice in (4, 5):
+    invertidas = []
+    for indice in range(1, 6):
         lote = pd.read_csv(rutas[indice])
         cambiadas = (lote_0[TARGET].to_numpy() != lote[TARGET].to_numpy()).sum()
         assert cambiadas > 0, f"lote_{indice} no tiene etiquetas invertidas"
+        invertidas.append(cambiadas)
+
+    # La proporción invertida crece de lote en lote: 10/20/30/40/50 %
+    assert invertidas == sorted(invertidas), f"la inversión no es creciente: {invertidas}"

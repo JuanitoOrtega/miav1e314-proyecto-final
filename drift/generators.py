@@ -90,9 +90,14 @@ def generate_all_batches(
     | 0    | Limpio. Control: debe salir verde.                  |
     | 1    | Concept drift leve (10% de etiquetas invertidas).   |
     | 2    | Concept drift medio (20%).                          |
-    | 3    | Data drift: tarifas +25% y mezcla de Contract.      |
+    | 3    | Concept drift (30%) + data drift: tarifas y mezcla. |
     | 4    | Data drift más fuerte + concept drift (40%).        |
     | 5    | Deriva severa en ambos ejes (50%).                  |
+
+    El concept drift crece 10/20/30/40/50 % de forma SOSTENIDA en los lotes
+    1 a 5 (spec §9.4). Que ningún lote intermedio se salte la inversión es
+    lo que permite que la racha de 3 lotes consecutivos por debajo del
+    umbral llegue a completarse y dispare la alarma de reentrenamiento.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -100,7 +105,7 @@ def generate_all_batches(
     base = make_clean_batch(df, n=n)
     rutas: list[Path] = []
 
-    # En los lotes 4 y 5 el concept drift se aplica PRIMERO. El shift
+    # En los lotes 3, 4 y 5 el concept drift se aplica PRIMERO. El shift
     # categórico convierte a Month-to-month todas las filas que no lo son,
     # así que si se aplicara antes, el subgrupo 'Two year' quedaría vacío y
     # inject_concept_drift no invertiría ninguna etiqueta.
@@ -108,7 +113,10 @@ def generate_all_batches(
         base,
         inject_concept_drift(base, flip_pct=0.10),
         inject_concept_drift(base, flip_pct=0.20),
-        inject_categorical_shift(inject_numeric_shift(base, pct=0.25), pct=0.5),
+        inject_categorical_shift(
+            inject_numeric_shift(inject_concept_drift(base, flip_pct=0.30), pct=0.25),
+            pct=0.5,
+        ),
         inject_categorical_shift(
             inject_numeric_shift(inject_concept_drift(base, flip_pct=0.40), pct=0.35),
             pct=0.6,

@@ -17,7 +17,12 @@
 Requisitos que aplican a **todas** las tareas:
 
 - **Python 3.11.** Toda la ejecución local y la imagen base del contenedor.
-- **MLflow ≥ 2.9.** Los alias del Model Registry (`models:/nombre@alias`) no existen antes.
+- **MLflow fijado en `2.19.0`, cliente y servidor.** El piso de `>= 2.9` es
+  por los alias del Model Registry (`models:/nombre@alias`), pero cliente y
+  servidor deben ir en la **misma línea de versión**: la API de `log_model`
+  cambió en MLflow 3.x (`name=` sustituye a `artifact_path=`), así que un
+  cliente 3.x contra el servidor `v2.19.0` del `docker-compose.yml` rompe el
+  registro de modelos. En `requirements.in` va `mlflow==2.19.0`, no `>=2.9`.
 - **`requirements.txt` con todas las versiones fijadas con `==`**, incluida la de MLflow. Se genera con `pip freeze`, nunca a mano.
 - **Semilla fija `random_state = 42`** en todo split y todo modelo.
 - **Nombre del modelo registrado: `telco-churn`.** Alias de producción: `champion`.
@@ -118,7 +123,7 @@ scikit-learn>=1.4
 pandas>=2.1
 numpy>=1.26
 scipy>=1.11
-mlflow>=2.9
+mlflow==2.19.0
 fastapi>=0.110
 uvicorn[standard]>=0.27
 pydantic>=2.6
@@ -648,9 +653,12 @@ def train_one(
         mlflow.log_metrics(metricas)
 
         firma = infer_signature(X_train, modelo.predict(X_train))
+        # artifact_path= y NO name=: el parámetro 'name' es API de MLflow 3.x
+        # y el servidor está fijado en v2.19.0 (infra/docker-compose.yml).
+        # Verificado en ejecución real: con 2.19 'name' lanza TypeError.
         mlflow.sklearn.log_model(
             modelo,
-            name="model",
+            artifact_path="model",
             signature=firma,
             input_example=X_train.head(3),
         )
@@ -841,7 +849,9 @@ def register_dummy(model_name: str = MODEL_NAME) -> int:
     mlflow.set_experiment(EXPERIMENT_NAME)
     with mlflow.start_run(run_name="dummy-placeholder"):
         mlflow.log_param("modelo", "dummy")
-        mlflow.sklearn.log_model(modelo, name="model", input_example=X_train.head(3))
+        mlflow.sklearn.log_model(
+            modelo, artifact_path="model", input_example=X_train.head(3)
+        )
         run_id = mlflow.active_run().info.run_id
 
     version = register_run(run_id, model_name)
@@ -2586,18 +2596,28 @@ def test_generate_all_batches_crea_6_ficheros(datos, tmp_path):
     assert rutas[0].name == "lote_0.csv"
 
 
-def test_los_lotes_4_y_5_llevan_concept_drift(datos, tmp_path):
-    """Regresión: el shift categórico elimina el subgrupo 'Two year', así que
-    el concept drift debe inyectarse ANTES. Si el orden se invirtiera, estos
-    lotes saldrían sin ninguna etiqueta cambiada y la gráfica del monitor no
-    mostraría la degradación que dispara la alarma."""
+def test_todos_los_lotes_derivados_llevan_concept_drift(datos, tmp_path):
+    """Regresión doble sobre la construcción de los lotes.
+
+    1. El shift categórico elimina el subgrupo 'Two year', así que el
+       concept drift debe inyectarse ANTES o no invertiría ninguna etiqueta.
+    2. Los lotes 1 a 5 llevan inversión creciente y SOSTENIDA (spec §9.4).
+       Si un lote intermedio se saltara la inversión, rompería la racha de
+       3 lotes consecutivos y la alarma de reentrenamiento nunca se
+       dispararía en la corrida real del monitor.
+    """
     _, reserva = datos
     rutas = generate_all_batches(reserva, out_dir=tmp_path, n=300)
     lote_0 = pd.read_csv(rutas[0])
-    for indice in (4, 5):
+    invertidas = []
+    for indice in range(1, 6):
         lote = pd.read_csv(rutas[indice])
         cambiadas = (lote_0[TARGET].to_numpy() != lote[TARGET].to_numpy()).sum()
         assert cambiadas > 0, f"lote_{indice} no tiene etiquetas invertidas"
+        invertidas.append(cambiadas)
+
+    # La proporción invertida crece de lote en lote: 10/20/30/40/50 %
+    assert invertidas == sorted(invertidas), f"la inversión no es creciente: {invertidas}"
 ```
 
 - [ ] **Step 2: Ejecutar y verificar que falla**
@@ -2700,9 +2720,14 @@ def generate_all_batches(
     | 0    | Limpio. Control: debe salir verde.                  |
     | 1    | Concept drift leve (10% de etiquetas invertidas).   |
     | 2    | Concept drift medio (20%).                          |
-    | 3    | Data drift: tarifas +25% y mezcla de Contract.      |
+    | 3    | Concept drift (30%) + data drift: tarifas y mezcla. |
     | 4    | Data drift más fuerte + concept drift (40%).        |
     | 5    | Deriva severa en ambos ejes (50%).                  |
+
+    El concept drift crece 10/20/30/40/50 % de forma SOSTENIDA en los lotes
+    1 a 5 (spec §9.4). Que ningún lote intermedio se salte la inversión es
+    lo que permite que la racha de 3 lotes consecutivos por debajo del
+    umbral llegue a completarse y dispare la alarma de reentrenamiento.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -2710,7 +2735,7 @@ def generate_all_batches(
     base = make_clean_batch(df, n=n)
     rutas: list[Path] = []
 
-    # En los lotes 4 y 5 el concept drift se aplica PRIMERO. El shift
+    # En los lotes 3, 4 y 5 el concept drift se aplica PRIMERO. El shift
     # categórico convierte a Month-to-month todas las filas que no lo son,
     # así que si se aplicara antes, el subgrupo 'Two year' quedaría vacío y
     # inject_concept_drift no invertiría ninguna etiqueta.
@@ -2718,7 +2743,10 @@ def generate_all_batches(
         base,
         inject_concept_drift(base, flip_pct=0.10),
         inject_concept_drift(base, flip_pct=0.20),
-        inject_categorical_shift(inject_numeric_shift(base, pct=0.25), pct=0.5),
+        inject_categorical_shift(
+            inject_numeric_shift(inject_concept_drift(base, flip_pct=0.30), pct=0.25),
+            pct=0.5,
+        ),
         inject_categorical_shift(
             inject_numeric_shift(inject_concept_drift(base, flip_pct=0.40), pct=0.35),
             pct=0.6,
