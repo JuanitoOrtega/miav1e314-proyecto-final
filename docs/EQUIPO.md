@@ -13,11 +13,11 @@ Quién hace qué, en qué orden, y de quién depende cada uno.
 
 | # | Rol | Responsable de | Tareas del plan |
 |---|---|---|---|
-| **1** | **Modelo y MLflow** | El dataset, el preprocesamiento, los 6 runs y el versionado del modelo | T2, T3, T4, T5, T19 |
-| **2** | **API y contenedor** | El servicio de inferencia y su empaquetado en Docker | T1, T8, T9 |
-| **3** | **Kubernetes** | El clúster, el despliegue y las 4 demostraciones calificadas | T7, T10, T11, T13 |
-| **4** | **Drift** | Los detectores estadísticos, la puerta y el criterio de reentrenamiento | T14, T15, T16, T17 |
-| **5** | **Infraestructura, TLS y docs** | MLflow, PostgreSQL, nginx, certbot, la UI web y la documentación de entrega | T6, T12, T18, T20 |
+| **1** | **Modelo y MLflow - Cristhian** | El dataset, el preprocesamiento, los 6 runs y el versionado del modelo | T2, T3, T4, T5, T19 |
+| **2** | **API y contenedor - Ronald** | El servicio de inferencia y su empaquetado en Docker | T1, T8, T9 |
+| **3** | **Kubernetes - Perseo** | El clúster, el despliegue y las 4 demostraciones calificadas | T7, T10, T11, T13 |
+| **4** | **Drift - Erika y Ricardo** | Los detectores estadísticos, la puerta y el criterio de reentrenamiento | T14, T15, T16, T17 |
+| **5** | **Infraestructura, TLS y docs - Juanito** | MLflow, PostgreSQL, nginx, certbot, la UI web y la documentación de entrega | T6, T12, T18, T20 |
 
 ---
 
