@@ -373,7 +373,7 @@ los obtienen por HTTP. Es una trampa clásica y conviene tenerla resuelta desde 
 ## 7. Fase 2 — Contenerización
 
 - **Dockerfile propio** (el enunciado prohíbe usar únicamente una imagen prearmada de
-  terceros), basado en `python:3.11-slim`.
+  terceros), basado en `python:3.12-slim`.
 - **Multi-stage build:** etapa de construcción para compilar dependencias, etapa final
   solo con lo necesario en tiempo de ejecución.
 - **Usuario no-root** (`appuser`) — buena práctica y punto fácil a favor en la defensa.

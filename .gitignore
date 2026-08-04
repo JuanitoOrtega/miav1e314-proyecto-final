@@ -244,7 +244,9 @@ pyrightconfig.json
 [Ll]ib
 [Ll]ib64
 [Ll]ocal
-[Ss]cripts
+# [Ss]cripts  <- DESACTIVADA: la plantilla la pone por la carpeta Scripts/
+# de los virtualenv de Windows, pero el patrón con corchetes también captura
+# nuestro scripts/ del proyecto. Es redundante: .venv/ ya está ignorado.
 pyvenv.cfg
 pip-selfcheck.json
 
@@ -276,6 +278,8 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,git,linux,windows,macos
 ### Proyecto telco-churn-mlops ###
+# La plantilla de Python ignora '[Ss]cripts' por la carpeta Scripts/ de
+# los virtualenv de Windows, pero eso también captura nuestro scripts/.
 mlruns/
 mlartifacts/
 data/batches/

@@ -6,7 +6,7 @@
 
 **Architecture:** Dos planos en un VPS Ubuntu 24.04. El plano de MLOps (MLflow Server + PostgreSQL) corre en Docker Compose fuera del clúster. El plano de servicio (FastAPI + modelo + UI estática) corre en k3s con 3 réplicas tras un `Service` NodePort. Cada pod carga el modelo del Model Registry por alias `@champion` al arrancar. nginx en el host termina TLS para dos subdominios.
 
-**Tech Stack:** Python 3.11, scikit-learn, MLflow ≥ 2.9, FastAPI, Pydantic, scipy, pytest, Docker, k3s, nginx, certbot.
+**Tech Stack:** Python 3.12, scikit-learn, MLflow ≥ 2.9, FastAPI, Pydantic, scipy, pytest, Docker, k3s, nginx, certbot.
 
 **Spec:** [`docs/superpowers/specs/2026-08-03-telco-churn-mlops-design.md`](../specs/2026-08-03-telco-churn-mlops-design.md)
 
@@ -16,7 +16,7 @@
 
 Requisitos que aplican a **todas** las tareas:
 
-- **Python 3.11.** Toda la ejecución local y la imagen base del contenedor.
+- **Python 3.12.** Toda la ejecución local y la imagen base del contenedor.
 - **MLflow fijado en `2.19.0`, cliente y servidor.** El piso de `>= 2.9` es
   por los alias del Model Registry (`models:/nombre@alias`), pero cliente y
   servidor deben ir en la **misma línea de versión**: la API de `log_model`
@@ -136,7 +136,7 @@ httpx>=0.27
 - [ ] **Step 3: Crear el entorno virtual e instalar**
 
 ```bash
-python3.11 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.in
@@ -1525,7 +1525,7 @@ drift/tests/
 
 ```dockerfile
 # Etapa de construcción: compila las dependencias
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends gcc \
@@ -1535,7 +1535,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Etapa final: solo lo necesario en tiempo de ejecución
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
