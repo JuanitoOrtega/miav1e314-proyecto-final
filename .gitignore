@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+mlruns/
+mlartifacts/
+infra/.env
+data/batches/
+docs/evidencias/*.png
+!docs/evidencias/.gitkeep
+.DS_Store
+.idea/
+.vscode/
