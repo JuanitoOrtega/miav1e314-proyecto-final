@@ -1,0 +1,538 @@
+/* Paleta y tokens.
+ *
+ * Los valores salen de una paleta validada con el script de comprobación
+ * (banda de luminosidad, suelo de croma, separación bajo daltonismo y contraste
+ * contra la superficie). Los pasos oscuros no son un volteo automático de los
+ * claros: son los pasos elegidos para la superficie oscura.
+ *
+ * Regla que se respeta en todo el fichero: el texto lleva tokens de texto,
+ * nunca el color de un dato. La identidad la aporta la marca de color que está
+ * al lado (el icono, el punto, la barra), y el estado va siempre acompañado de
+ * icono y etiqueta — nunca solo de color, porque los pasos "bueno" y "crítico"
+ * quedan a ΔE 4.1 bajo deuteranopía.
+ */
+:root {
+  color-scheme: light;
+
+  --plano: #f9f9f7;
+  --superficie: #fcfcfb;
+  --texto-primario: #0b0b0b;
+  --texto-secundario: #52514e;
+  --texto-tenue: #898781;
+  --linea: #e1e0d9;
+  --borde: rgba(11, 11, 11, 0.1);
+
+  --serie: #2a78d6;
+  --serie-pista: #cde2fb;
+
+  --estado-bueno: #0ca30c;
+  --estado-critico: #d03b3b;
+
+  --radio: 10px;
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+
+    --plano: #0d0d0d;
+    --superficie: #1a1a19;
+    --texto-primario: #ffffff;
+    --texto-secundario: #c3c2b7;
+    --texto-tenue: #898781;
+    --linea: #2c2c2a;
+    --borde: rgba(255, 255, 255, 0.1);
+
+    --serie: #3987e5;
+    --serie-pista: #184f95;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 2rem 1rem 3rem;
+  background: var(--plano);
+  color: var(--texto-primario);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-secundario);
+}
+
+.pagina {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.subtitulo {
+  margin: 0.35rem 0 0;
+  max-width: 62ch;
+  color: var(--texto-secundario);
+  font-size: 0.88rem;
+}
+
+.panel {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 1.25rem;
+}
+
+/* --- Cabecera --- */
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.estado {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: var(--superficie);
+  color: var(--texto-secundario);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.estado .punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--texto-tenue);
+}
+
+.estado.es-bueno .punto {
+  background: var(--estado-bueno);
+}
+
+.estado.es-critico .punto {
+  background: var(--estado-critico);
+}
+
+/* --- Distribución --- */
+
+.columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: sticky;
+  top: 1rem;
+}
+
+@media (max-width: 900px) {
+  .columnas {
+    grid-template-columns: 1fr;
+  }
+
+  .lateral {
+    position: static;
+  }
+}
+
+/* --- Formulario --- */
+
+.ejemplos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  padding-bottom: 1rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.ejemplos-titulo {
+  font-size: 0.8rem;
+  color: var(--texto-secundario);
+}
+
+.ejemplos-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+fieldset {
+  margin: 0 0 1.25rem;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+  margin-bottom: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-tenue);
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.85rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.campo label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--texto-secundario);
+}
+
+.campo .ayuda {
+  font-size: 0.72rem;
+  color: var(--texto-tenue);
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+  background: var(--superficie);
+  color: var(--texto-primario);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+:focus-visible {
+  outline: 2px solid var(--serie);
+  outline-offset: 2px;
+}
+
+.boton-principal,
+.boton-secundario {
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.boton-principal {
+  width: 100%;
+  padding: 0.65rem 1.25rem;
+  border: 0;
+  background: var(--serie);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.boton-principal:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.boton-secundario {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--linea);
+  background: var(--superficie);
+  color: var(--texto-secundario);
+  font-size: 0.8rem;
+}
+
+.boton-secundario:hover {
+  border-color: var(--texto-tenue);
+  color: var(--texto-primario);
+}
+
+/* --- Resultado --- */
+
+.veredicto {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--texto-primario);
+}
+
+/* El icono es la marca coloreada; el texto se queda en tinta primaria. */
+.veredicto.es-critico svg {
+  color: var(--estado-critico);
+}
+
+.veredicto.es-bueno svg {
+  color: var(--estado-bueno);
+}
+
+.cifra-hero {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.cifra-pie {
+  margin: 0.3rem 0 1rem;
+  color: var(--texto-secundario);
+  font-size: 0.85rem;
+}
+
+.medidor {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--serie-pista);
+  overflow: hidden;
+}
+
+.medidor-relleno {
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  transition: width 0.25s ease;
+}
+
+.medidor-relleno.es-critico {
+  background: var(--estado-critico);
+}
+
+.medidor-relleno.es-bueno {
+  background: var(--estado-bueno);
+}
+
+.medidor-umbral {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--superficie);
+}
+
+.medidor-nota,
+.nota {
+  margin: 0.6rem 0 0;
+  color: var(--texto-tenue);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.detalle {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--linea);
+}
+
+.detalle > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.detalle dt {
+  color: var(--texto-secundario);
+  font-size: 0.8rem;
+}
+
+.detalle dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.run-id {
+  font-size: 0.72rem;
+}
+
+.vacio {
+  margin: 0;
+  color: var(--texto-tenue);
+  font-size: 0.85rem;
+}
+
+.mensaje-error {
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--borde);
+  border-left: 3px solid var(--estado-critico);
+  border-radius: 6px;
+  color: var(--texto-secundario);
+  font-size: 0.83rem;
+}
+
+.mensaje-error strong {
+  color: var(--texto-primario);
+}
+
+/* --- Balanceo --- */
+
+.balanceo-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.balanceo-cabecera h2 {
+  margin-bottom: 0;
+}
+
+.kpis {
+  display: flex;
+  gap: 2rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.kpi-etiqueta {
+  color: var(--texto-secundario);
+  font-size: 0.78rem;
+}
+
+.kpi-valor {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.barras {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barras li {
+  display: grid;
+  /* 34ch da cabida al nombre completo de un pod (`<deployment>-<replicaset>-<sufijo>`,
+   * unos 31 caracteres). El sufijo es lo único que distingue una réplica de
+   * otra, así que truncarlo dejaría el panel sin sentido. */
+  grid-template-columns: minmax(0, 34ch) minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.barra-etiqueta {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--texto-secundario);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Contenedor de crecimiento, sin fondo: la barra se lee contra la superficie,
+ * no contra una pista decorativa. */
+.barra-pista {
+  display: block;
+  min-width: 0;
+}
+
+.barra-marca {
+  display: block;
+  height: 14px;
+  min-width: 3px;
+  /* Extremo del dato redondeado, cuadrado en la línea base. */
+  border-radius: 0 4px 4px 0;
+  background: var(--serie);
+  transition: width 0.25s ease;
+}
+
+.barra-valor {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.barra-porcentaje {
+  color: var(--texto-tenue);
+  font-size: 0.74rem;
+  font-weight: 400;
+}
+
+@media (max-width: 560px) {
+  .barras li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .barra-etiqueta {
+    grid-column: 1 / -1;
+  }
+}
+
+/* --- Pie --- */
+
+.pie {
+  color: var(--texto-tenue);
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

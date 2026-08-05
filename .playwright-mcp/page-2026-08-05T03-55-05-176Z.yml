@@ -1,0 +1,155 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - heading "Predicción de abandono de clientes" [level=1] [ref=f2e6]
+      - paragraph [ref=f2e7]:
+        - text: Consume
+        - code [ref=f2e8]: POST /predict
+        - text: del servicio desplegado en Kubernetes. Modelo cargado del Model Registry de MLflow por alias.
+    - paragraph [ref=f2e9]: Servicio respondiendo
+  - generic [ref=f2e11]:
+    - generic [ref=f2e12]:
+      - generic [ref=f2e13]:
+        - generic [ref=f2e14]: Cargar un perfil de ejemplo
+        - generic [ref=f2e15]:
+          - button "Cliente en riesgo" [ref=f2e16] [cursor=pointer]
+          - button "Cliente estable" [ref=f2e17] [cursor=pointer]
+      - group "Contrato y facturación" [ref=f2e18]:
+        - generic [ref=f2e20]:
+          - generic [ref=f2e21]:
+            - generic [ref=f2e22]: Tipo de contrato
+            - combobox "Tipo de contrato" [ref=f2e23]:
+              - option "Mes a mes" [selected]
+              - option "Un año"
+              - option "Dos años"
+          - generic [ref=f2e24]:
+            - generic [ref=f2e25]: Método de pago
+            - combobox "Método de pago" [ref=f2e26]:
+              - option "Cheque electrónico" [selected]
+              - option "Cheque por correo"
+              - option "Transferencia (automática)"
+              - option "Tarjeta de crédito (automática)"
+          - generic [ref=f2e27]:
+            - generic [ref=f2e28]: Facturación sin papel
+            - combobox "Facturación sin papel" [ref=f2e29]:
+              - option "Sí" [selected]
+              - option "No"
+          - generic [ref=f2e30]:
+            - generic [ref=f2e31]: Cargo mensual
+            - spinbutton "Cargo mensual" [ref=f2e32]: "89.9"
+            - generic [ref=f2e33]: importe facturado al mes
+          - generic [ref=f2e34]:
+            - generic [ref=f2e35]: Cargo total
+            - spinbutton "Cargo total" [ref=f2e36]: "179.8"
+            - generic [ref=f2e37]: importe acumulado histórico
+          - generic [ref=f2e38]:
+            - generic [ref=f2e39]: Antigüedad
+            - spinbutton "Antigüedad" [ref=f2e40]: "2"
+            - generic [ref=f2e41]: meses como cliente
+      - group "Perfil del cliente" [ref=f2e42]:
+        - generic [ref=f2e44]:
+          - generic [ref=f2e45]:
+            - generic [ref=f2e46]: Género
+            - combobox "Género" [ref=f2e47]:
+              - option "Mujer" [selected]
+              - option "Hombre"
+          - generic [ref=f2e48]:
+            - generic [ref=f2e49]: Tercera edad
+            - combobox "Tercera edad" [ref=f2e50]:
+              - option "No"
+              - option "Sí" [selected]
+          - generic [ref=f2e51]:
+            - generic [ref=f2e52]: Tiene pareja
+            - combobox "Tiene pareja" [ref=f2e53]:
+              - option "Sí"
+              - option "No" [selected]
+          - generic [ref=f2e54]:
+            - generic [ref=f2e55]: Tiene dependientes
+            - combobox "Tiene dependientes" [ref=f2e56]:
+              - option "Sí"
+              - option "No" [selected]
+      - group "Servicios contratados" [ref=f2e57]:
+        - generic [ref=f2e59]:
+          - generic [ref=f2e60]:
+            - generic [ref=f2e61]: Servicio telefónico
+            - combobox "Servicio telefónico" [ref=f2e62]:
+              - option "Sí" [selected]
+              - option "No"
+          - generic [ref=f2e63]:
+            - generic [ref=f2e64]: Líneas múltiples
+            - combobox "Líneas múltiples" [ref=f2e65]:
+              - option "Sí"
+              - option "No" [selected]
+              - option "Sin servicio telefónico"
+          - generic [ref=f2e66]:
+            - generic [ref=f2e67]: Servicio de internet
+            - combobox "Servicio de internet" [ref=f2e68]:
+              - option "Fibra óptica" [selected]
+              - option "DSL"
+              - option "No"
+          - generic [ref=f2e69]:
+            - generic [ref=f2e70]: Seguridad en línea
+            - combobox "Seguridad en línea" [ref=f2e71]:
+              - option "Sí"
+              - option "No" [selected]
+              - option "Sin servicio de internet"
+          - generic [ref=f2e72]:
+            - generic [ref=f2e73]: Copia de seguridad
+            - combobox "Copia de seguridad" [ref=f2e74]:
+              - option "Sí"
+              - option "No" [selected]
+              - option "Sin servicio de internet"
+          - generic [ref=f2e75]:
+            - generic [ref=f2e76]: Protección de dispositivo
+            - combobox "Protección de dispositivo" [ref=f2e77]:
+              - option "Sí"
+              - option "No" [selected]
+              - option "Sin servicio de internet"
+          - generic [ref=f2e78]:
+            - generic [ref=f2e79]: Soporte técnico
+            - combobox "Soporte técnico" [ref=f2e80]:
+              - option "Sí"
+              - option "No" [selected]
+              - option "Sin servicio de internet"
+          - generic [ref=f2e81]:
+            - generic [ref=f2e82]: Streaming de TV
+            - combobox "Streaming de TV" [ref=f2e83]:
+              - option "Sí" [selected]
+              - option "No"
+              - option "Sin servicio de internet"
+          - generic [ref=f2e84]:
+            - generic [ref=f2e85]: Streaming de películas
+            - combobox "Streaming de películas" [ref=f2e86]:
+              - option "Sí" [selected]
+              - option "No"
+              - option "Sin servicio de internet"
+      - button "Predecir abandono" [ref=f2e87] [cursor=pointer]
+    - generic [ref=f2e88]:
+      - generic [ref=f2e89]:
+        - heading "Resultado" [level=2] [ref=f2e90]
+        - paragraph [ref=f2e91]:
+          - text: Rellena el formulario y pulsa
+          - emphasis [ref=f2e92]: Predecir abandono
+          - text: . Cada respuesta indica qué pod la atendió.
+      - generic [ref=f2e93]:
+        - heading "Modelo en servicio" [level=2] [ref=f2e94]
+        - paragraph [ref=f2e95]:
+          - text: Consultando
+          - code [ref=f2e96]: /model-info
+          - text: …
+  - generic [ref=f2e97]:
+    - generic [ref=f2e99]:
+      - heading "Reparto entre réplicas" [level=2] [ref=f2e100]
+      - paragraph [ref=f2e101]:
+        - text: Peticiones de esta sesión, por pod que las atendió. Pulsa
+        - emphasis [ref=f2e102]: Predecir
+        - text: "varias veces: el Service reparte entre las réplicas."
+    - generic [ref=f2e103]:
+      - generic [ref=f2e104]:
+        - generic [ref=f2e105]: Peticiones
+        - generic [ref=f2e106]: "0"
+      - generic [ref=f2e107]:
+        - generic [ref=f2e108]: Pods distintos
+        - generic [ref=f2e109]: "0"
+    - paragraph [ref=f2e110]: Todavía no hay peticiones que repartir.
+  - contentinfo [ref=f2e111]: MOD14 · Maestría en Ciencia de Datos e Inteligencia Artificial, UAGRM

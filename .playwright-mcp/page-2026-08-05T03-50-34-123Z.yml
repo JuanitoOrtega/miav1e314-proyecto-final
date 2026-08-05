@@ -1,0 +1,195 @@
+- generic [ref=f1e3]:
+  - banner [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - heading "Predicción de abandono de clientes" [level=1] [ref=f1e6]
+      - paragraph [ref=f1e7]:
+        - text: Consume
+        - code [ref=f1e8]: POST /predict
+        - text: del servicio desplegado en Kubernetes. Modelo cargado del Model Registry de MLflow por alias.
+    - paragraph [ref=f1e9]: Servicio respondiendo
+  - generic [ref=f1e11]:
+    - generic [ref=f1e12]:
+      - generic [ref=f1e13]:
+        - generic [ref=f1e14]: Cargar un perfil de ejemplo
+        - generic [ref=f1e15]:
+          - button "Cliente en riesgo" [ref=f1e16] [cursor=pointer]
+          - button "Cliente estable" [ref=f1e17] [cursor=pointer]
+      - group "Contrato y facturación" [ref=f1e18]:
+        - generic [ref=f1e20]:
+          - generic [ref=f1e21]:
+            - generic [ref=f1e22]: Tipo de contrato
+            - combobox "Tipo de contrato" [ref=f1e23]:
+              - option "Mes a mes" [selected]
+              - option "Un año"
+              - option "Dos años"
+          - generic [ref=f1e24]:
+            - generic [ref=f1e25]: Método de pago
+            - combobox "Método de pago" [ref=f1e26]:
+              - option "Cheque electrónico" [selected]
+              - option "Cheque por correo"
+              - option "Transferencia (automática)"
+              - option "Tarjeta de crédito (automática)"
+          - generic [ref=f1e27]:
+            - generic [ref=f1e28]: Facturación sin papel
+            - combobox "Facturación sin papel" [ref=f1e29]:
+              - option "Yes" [selected]
+              - option "No"
+          - generic [ref=f1e30]:
+            - generic [ref=f1e31]: Cargo mensual
+            - spinbutton "Cargo mensual" [ref=f1e32]: "89.9"
+            - generic [ref=f1e33]: importe facturado al mes
+          - generic [ref=f1e34]:
+            - generic [ref=f1e35]: Cargo total
+            - spinbutton "Cargo total" [ref=f1e36]: "179.8"
+            - generic [ref=f1e37]: importe acumulado histórico
+          - generic [ref=f1e38]:
+            - generic [ref=f1e39]: Antigüedad
+            - spinbutton "Antigüedad" [ref=f1e40]: "2"
+            - generic [ref=f1e41]: meses como cliente
+      - group "Perfil del cliente" [ref=f1e42]:
+        - generic [ref=f1e44]:
+          - generic [ref=f1e45]:
+            - generic [ref=f1e46]: Género
+            - combobox "Género" [ref=f1e47]:
+              - option "Mujer" [selected]
+              - option "Hombre"
+          - generic [ref=f1e48]:
+            - generic [ref=f1e49]: Tercera edad
+            - combobox "Tercera edad" [ref=f1e50]:
+              - option "No"
+              - option "Sí" [selected]
+          - generic [ref=f1e51]:
+            - generic [ref=f1e52]: Tiene pareja
+            - combobox "Tiene pareja" [ref=f1e53]:
+              - option "Yes"
+              - option "No" [selected]
+          - generic [ref=f1e54]:
+            - generic [ref=f1e55]: Tiene dependientes
+            - combobox "Tiene dependientes" [ref=f1e56]:
+              - option "Yes"
+              - option "No" [selected]
+      - group "Servicios contratados" [ref=f1e57]:
+        - generic [ref=f1e59]:
+          - generic [ref=f1e60]:
+            - generic [ref=f1e61]: Servicio telefónico
+            - combobox "Servicio telefónico" [ref=f1e62]:
+              - option "Yes" [selected]
+              - option "No"
+          - generic [ref=f1e63]:
+            - generic [ref=f1e64]: Líneas múltiples
+            - combobox "Líneas múltiples" [ref=f1e65]:
+              - option "Yes"
+              - option "No" [selected]
+              - option "Sin servicio telefónico"
+          - generic [ref=f1e66]:
+            - generic [ref=f1e67]: Servicio de internet
+            - combobox "Servicio de internet" [ref=f1e68]:
+              - option "Fibra óptica" [selected]
+              - option "DSL"
+              - option "No"
+          - generic [ref=f1e69]:
+            - generic [ref=f1e70]: Seguridad en línea
+            - combobox "Seguridad en línea" [ref=f1e71]:
+              - option "Yes"
+              - option "No" [selected]
+              - option "No internet service"
+          - generic [ref=f1e72]:
+            - generic [ref=f1e73]: Copia de seguridad
+            - combobox "Copia de seguridad" [ref=f1e74]:
+              - option "Yes"
+              - option "No" [selected]
+              - option "No internet service"
+          - generic [ref=f1e75]:
+            - generic [ref=f1e76]: Protección de dispositivo
+            - combobox "Protección de dispositivo" [ref=f1e77]:
+              - option "Yes"
+              - option "No" [selected]
+              - option "No internet service"
+          - generic [ref=f1e78]:
+            - generic [ref=f1e79]: Soporte técnico
+            - combobox "Soporte técnico" [ref=f1e80]:
+              - option "Yes"
+              - option "No" [selected]
+              - option "No internet service"
+          - generic [ref=f1e81]:
+            - generic [ref=f1e82]: Streaming de TV
+            - combobox "Streaming de TV" [ref=f1e83]:
+              - option "Yes" [selected]
+              - option "No"
+              - option "No internet service"
+          - generic [ref=f1e84]:
+            - generic [ref=f1e85]: Streaming de películas
+            - combobox "Streaming de películas" [ref=f1e86]:
+              - option "Yes" [selected]
+              - option "No"
+              - option "No internet service"
+      - button "Predecir abandono" [ref=f1e87] [cursor=pointer]
+    - generic [ref=f1e88]:
+      - generic [ref=f1e89]:
+        - heading "Resultado" [level=2] [ref=f1e90]
+        - paragraph [ref=f1e91]:
+          - generic [ref=f1e115]: Cliente estable
+        - paragraph [ref=f1e116]: 0.0%
+        - paragraph [ref=f1e117]: probabilidad de abandono
+        - meter "Probabilidad de abandono" [ref=f1e118]
+        - paragraph [ref=f1e120]:
+          - text: "La marca es el umbral de decisión, 0.50: por encima, el servicio devuelve"
+          - code [ref=f1e121]: "prediction: 1"
+          - text: .
+        - generic [ref=f1e122]:
+          - generic [ref=f1e123]:
+            - term [ref=f1e124]: Atendido por
+            - definition [ref=f1e125]:
+              - code [ref=f1e126]: telco-churn-api-7dc5d8979-64z86
+          - generic [ref=f1e127]:
+            - term [ref=f1e128]: Versión del modelo
+            - definition [ref=f1e129]:
+              - code [ref=f1e130]: "1"
+      - generic [ref=f1e93]:
+        - heading "Modelo en servicio" [level=2] [ref=f1e94]
+        - generic [ref=f1e131]:
+          - generic [ref=f1e132]:
+            - term [ref=f1e133]: Nombre registrado
+            - definition [ref=f1e134]:
+              - code [ref=f1e135]: telco-churn
+          - generic [ref=f1e136]:
+            - term [ref=f1e137]: Versión
+            - definition [ref=f1e138]:
+              - code [ref=f1e139]: "1"
+          - generic [ref=f1e140]:
+            - term [ref=f1e141]: Alias
+            - definition [ref=f1e142]:
+              - code [ref=f1e143]: champion
+          - generic [ref=f1e144]:
+            - term [ref=f1e145]: Run de origen
+            - definition [ref=f1e146]:
+              - code [ref=f1e147]: b731dd4587fa4cb496f56c391fafd632
+        - paragraph [ref=f1e148]:
+          - text: El pod cargó
+          - code [ref=f1e149]: models:/telco-churn@champion
+          - text: del Model Registry. Ese
+          - code [ref=f1e150]: run_id
+          - text: "es el del run que produjo el modelo: el mismo que aparece en MLflow."
+  - generic [ref=f1e97]:
+    - generic [ref=f1e98]:
+      - generic [ref=f1e99]:
+        - heading "Reparto entre réplicas" [level=2] [ref=f1e100]
+        - paragraph [ref=f1e101]:
+          - text: Peticiones de esta sesión, por pod que las atendió. Pulsa
+          - emphasis [ref=f1e102]: Predecir
+          - text: "varias veces: el Service reparte entre las réplicas."
+      - button "Reiniciar cuenta" [ref=f1e151] [cursor=pointer]
+    - generic [ref=f1e103]:
+      - generic [ref=f1e104]:
+        - generic [ref=f1e105]: Peticiones
+        - generic [ref=f1e106]: "1"
+      - generic [ref=f1e107]:
+        - generic [ref=f1e108]: Pods distintos
+        - generic [ref=f1e109]: "1"
+    - list [ref=f1e152]:
+      - 'listitem "telco-churn-api-7dc5d8979-64z86: 1 de 1" [ref=f1e153]':
+        - generic [ref=f1e154]: telco-churn-api-7dc5d8979-64z86
+        - generic [ref=f1e157]:
+          - text: "1"
+          - generic [ref=f1e158]: 100%
+  - contentinfo [ref=f1e111]: MOD14 · Maestría en Ciencia de Datos e Inteligencia Artificial, UAGRM
