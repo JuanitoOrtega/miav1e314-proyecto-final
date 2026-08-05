@@ -179,15 +179,101 @@ reimplementa. Es lo que descarta el train/serve skew.
 
 ## 3. Contenerización (fase 2)
 
-*Pendiente:* construcción de la imagen, arranque sin pasos manuales y usuario
-no-root.
+La imagen `telco-churn-api:v1` se construye con un `Dockerfile` propio
+(multi-stage, `python:3.12-slim`, usuario no-root) y se importa a containerd:
+
+```
+$ docker build -t telco-churn-api:v1 .
+$ docker save telco-churn-api:v1 | sudo k3s ctr images import -
+$ sudo k3s ctr images ls | grep telco-churn
+docker.io/library/telco-churn-api:v1
+```
+
+El contenedor levanta el servicio y responde inferencias **sin pasos manuales
+adicionales**: el `CMD` arranca uvicorn y el modelo se descarga del registry
+durante el `startup` de la aplicación.
 
 ---
 
 ## 4. Kubernetes (fase 3)
 
-*Pendiente:* las cuatro demostraciones exigidas — 3 réplicas en Running,
-balanceo entre pods, autorreparación y escalado.
+### 4.1 Demostración 1 — Tres réplicas en Running simultáneo
+
+```
+$ kubectl get pods -o wide
+NAME                               READY   STATUS    RESTARTS   AGE   IP           NODE
+telco-churn-api-5fd68dcc67-f8rlp   1/1     Running   0          46s   10.42.0.8    creativadev
+telco-churn-api-5fd68dcc67-m9zsd   1/1     Running   0          46s   10.42.0.9    creativadev
+telco-churn-api-5fd68dcc67-xjstb   1/1     Running   0          46s   10.42.0.10   creativadev
+```
+
+Tres pods `Running` con `READY 1/1`, cada uno con su IP en la red del clúster.
+
+### 4.2 Trazabilidad del modelo desplegado
+
+```
+$ curl -s http://localhost:30080/model-info
+{"model_name":"telco-churn","version":"2",
+ "run_id":"140470a3690b4e37829cb13bc23ece0b",
+ "alias":"champion","loaded_at":"2026-08-05T04:27:44.583970+00:00"}
+
+$ curl -s https://churn.juanitodev.com/model-info
+{"model_name":"telco-churn","version":"2",
+ "run_id":"140470a3690b4e37829cb13bc23ece0b",
+ "alias":"champion","loaded_at":"2026-08-05T04:27:44.583970+00:00"}
+```
+
+Ese `run_id` es **el mismo** que el del run `gb-lr0.05` del experimento
+(§2.3). El modelo que está sirviendo peticiones en Kubernetes y el
+experimento que lo produjo están vinculados de forma verificable.
+
+### 4.3 Demostración 2 — El tráfico se distribuye entre réplicas
+
+Ejecutado **desde una máquina externa**, contra la URL pública por HTTPS:
+
+```
+$ ./scripts/demo_balanceo.sh https://churn.juanitodev.com 12
+
+Enviando 12 peticiones a https://churn.juanitodev.com/predict
+
+   1  telco-churn-api-5fd68dcc67-xjstb p=0.5799
+   2  telco-churn-api-5fd68dcc67-xjstb p=0.5799
+   3  telco-churn-api-5fd68dcc67-m9zsd p=0.5799
+   4  telco-churn-api-5fd68dcc67-f8rlp p=0.5799
+   5  telco-churn-api-5fd68dcc67-m9zsd p=0.5799
+   6  telco-churn-api-5fd68dcc67-f8rlp p=0.5799
+   7  telco-churn-api-5fd68dcc67-m9zsd p=0.5799
+   8  telco-churn-api-5fd68dcc67-f8rlp p=0.5799
+   9  telco-churn-api-5fd68dcc67-m9zsd p=0.5799
+  10  telco-churn-api-5fd68dcc67-f8rlp p=0.5799
+  11  telco-churn-api-5fd68dcc67-m9zsd p=0.5799
+  12  telco-churn-api-5fd68dcc67-f8rlp p=0.5799
+
+Reparto entre pods:
+    5 peticiones  telco-churn-api-5fd68dcc67-f8rlp
+    5 peticiones  telco-churn-api-5fd68dcc67-m9zsd
+    2 peticiones  telco-churn-api-5fd68dcc67-xjstb
+
+BALANCEO DEMOSTRADO: 3 pods distintos atendieron las peticiones.
+```
+
+**Dos cosas que muestra esta salida.** Primero, el reparto real entre las tres
+réplicas: cada pod conoce su nombre por la Downward API y lo devuelve en
+`served_by`. Segundo, la probabilidad es **idéntica en los tres pods**
+(`0.5799`), lo que confirma que todos sirven exactamente la misma versión del
+modelo — no hay réplicas descompasadas.
+
+El reparto no es perfectamente uniforme porque `kube-proxy` balancea con
+reglas de iptables de probabilidad, no con un reparto por turnos estricto.
+
+### 4.4 Demostración 3 — Autorreparación
+
+*Pendiente:* borrar un pod con tráfico en curso y comprobar que ninguna
+petición falla.
+
+### 4.5 Demostración 4 — Escalado
+
+*Pendiente:* `kubectl scale` a 5 y a 2 réplicas.
 
 ---
 
