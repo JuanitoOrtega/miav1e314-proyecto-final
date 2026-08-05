@@ -163,11 +163,16 @@ interfaz es en sí misma una demostración visual del balanceo de carga.
 | Campo | Valor |
 |---|---|
 | Nombre en el Model Registry | `telco-churn` |
+| **Versión desplegada** | **2** |
 | Alias de producción | `champion` |
-| Experimento | `telco-churn-experimento` |
-| Métrica principal | ROC-AUC |
+| **`run_id` de origen** | **`140470a3690b4e37829cb13bc23ece0b`** |
+| Nombre del run | `gb-lr0.05` |
+| Algoritmo | GradientBoostingClassifier (`learning_rate=0.05`) |
+| ROC-AUC en test | **0.8452** |
+| Experimento | `telco-churn-experimento` (id 1) |
+| Versión anterior registrada | 1 — LogisticRegression `C=1.0`, ROC-AUC 0.8420 |
 
-La versión concreta y su `run_id` se obtienen del propio servicio:
+El servicio expone estos mismos datos en tiempo de ejecución:
 
 ```bash
 curl -s https://churn.juanitodev.com/model-info

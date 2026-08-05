@@ -104,9 +104,76 @@ cadena `INPUT`, mientras que el tráfico DNAT-eado hacia un contenedor pasa por
 
 ## 2. MLflow y trazabilidad (fase 1)
 
-*Pendiente:* experimento con los 6 runs, vista de comparación, Model Registry
-con las 2 versiones y el alias `champion`, y `/model-info` devolviendo el
-mismo `run_id`.
+### 2.1 Los seis runs registrados
+
+Ejecutados contra el servidor real por HTTPS con autenticación:
+
+```
+$ export MLFLOW_TRACKING_URI=https://mlflow.juanitodev.com
+$ python -m src.train
+
+Experimento 'telco-churn-experimento' · entrenamiento=5634 filas · prueba=1409 filas
+
+logreg-C0.1    roc_auc=0.8409 f1=0.5913 recall=0.5455
+logreg-C1.0    roc_auc=0.8420 f1=0.6040 recall=0.5588
+rf-100-d5      roc_auc=0.8400 f1=0.5301 recall=0.4358
+rf-300-d10     roc_auc=0.8415 f1=0.5762 recall=0.5107
+gb-lr0.05      roc_auc=0.8452 f1=0.5793 recall=0.5080
+gb-lr0.2       roc_auc=0.8386 f1=0.5663 recall=0.5027
+
+6 runs registrados en https://mlflow.juanitodev.com
+```
+
+Son seis, por encima del mínimo de cinco que exige el enunciado, y comparables
+entre sí: comparten split, semilla y conjunto de métricas.
+
+### 2.2 Model Registry — dos versiones y alias
+
+```
+$ python -m src.register
+
+Created version '1' of model 'telco-churn'.
+Created version '2' of model 'telco-churn'.
+v1 = linea base logistica  roc_auc=0.8420
+Alias 'champion' -> telco-churn v2
+v2 = champion            roc_auc=0.8452
+```
+
+### 2.3 Trazabilidad — el modelo desplegado y su experimento
+
+```
+$ python -c "from src.register import champion_info; print(champion_info())"
+
+  model_name: telco-churn
+  version:    2
+  run_id:     140470a3690b4e37829cb13bc23ece0b
+  alias:      champion
+```
+
+Ese `run_id` corresponde al run `gb-lr0.05` del experimento, visible en
+`https://mlflow.juanitodev.com/#/experiments/1/runs/140470a3690b4e37829cb13bc23ece0b`,
+y es el mismo que devuelve el endpoint `/model-info` del servicio en
+Kubernetes. **Ese vínculo es la trazabilidad que exige §3.3 del enunciado.**
+
+### 2.4 El modelo se carga por alias, no por ruta
+
+```
+$ python -c "import mlflow; mlflow.sklearn.load_model('models:/telco-churn@champion')"
+
+Modelo descargado del registry en 6.1s
+Pipeline: preprocessor -> classifier
+
+Predicciones de prueba:
+   cliente 1: 0.0435 de probabilidad de abandono
+   cliente 2: 0.7622 de probabilidad de abandono
+   cliente 3: 0.0651 de probabilidad de abandono
+
+ROC-AUC sobre el test completo: 0.8452
+```
+
+El pipeline descargado incluye el paso `preprocessor`: el preprocesamiento
+viaja **dentro** del modelo, así que el servicio de inferencia no lo
+reimplementa. Es lo que descarta el train/serve skew.
 
 ---
 
@@ -151,10 +218,37 @@ exit=1
 Es el comportamiento que exige §6.1 del enunciado: pasa con datos del mismo
 origen que el entrenamiento y falla cuando se inyecta deriva deliberadamente.
 
-### 5.3 Gráfica temporal de concept drift
+### 5.3 Concept drift y criterio de reentrenamiento
 
-*Pendiente:* `docs/evidencias/concept_drift.png`, generada por
-`python -m drift.monitor` contra el modelo real del registry.
+Medido con el modelo real descargado del registry (`telco-churn` v2):
+
+```
+$ python -m drift.monitor
+
+Baseline (lote 0): 0.8530
+  Lote 0: ROC-AUC=0.8530  caída=+0.0000
+  Lote 1: ROC-AUC=0.7952  caída=+0.0578  <-- por debajo del umbral
+  Lote 2: ROC-AUC=0.7482  caída=+0.1048  <-- por debajo del umbral
+  Lote 3: ROC-AUC=0.7195  caída=+0.1335  <-- por debajo del umbral
+  Lote 4: ROC-AUC=0.6849  caída=+0.1681  <-- por debajo del umbral
+  Lote 5: ROC-AUC=0.6532  caída=+0.1998  <-- por debajo del umbral
+
+ALARMA: procede reentrenar (lote 3)
+```
+
+![Degradación del modelo sobre lotes sucesivos](evidencias/concept_drift.png)
+
+**Cómo leer la gráfica.** El ROC-AUC cae de 0,853 a 0,653 conforme aumenta la
+proporción de etiquetas invertidas. La línea roja punteada marca el umbral de
+alarma (baseline menos 0,05). La alarma **no se dispara en el lote 1**, aunque
+ya está por debajo del umbral, sino en el **lote 3**: el criterio exige que la
+caída se sostenga durante tres lotes consecutivos, para no reentrenar por un
+lote ruidoso.
+
+Nótese que las variables de entrada no se alteraron en los lotes 1 y 2: solo
+cambió la relación entrada-salida. Es exactamente lo que distingue el concept
+drift del data drift, y por qué el monitoreo de entradas por sí solo no
+bastaría para detectarlo.
 
 ---
 
