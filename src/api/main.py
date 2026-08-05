@@ -78,13 +78,22 @@ def startup() -> None:
         MODELO, INFO = None, None
 
 
-@app.get("/health")
+# Los endpoints de lectura aceptan GET y HEAD.
+#
+# Sin HEAD explícito, la petición no casa con la ruta y cae al StaticFiles
+# montado en '/', que responde 404: 'curl -I /health' contradiría a
+# 'curl /health', y cualquier monitor externo que sondee con HEAD daría el
+# servicio por caído. Starlette devuelve el HEAD sin cuerpo por su cuenta.
+LECTURA = ["GET", "HEAD"]
+
+
+@app.api_route("/health", methods=LECTURA)
 def health() -> dict:
     """Liveness: el proceso está vivo. No mira el modelo."""
     return {"status": "ok", "pod": POD_NAME}
 
 
-@app.get("/ready")
+@app.api_route("/ready", methods=LECTURA)
 def ready() -> JSONResponse:
     """Readiness: solo 200 si el modelo está cargado."""
     if MODELO is None:
@@ -92,7 +101,7 @@ def ready() -> JSONResponse:
     return JSONResponse(status_code=200, content={"status": "listo"})
 
 
-@app.get("/model-info", response_model=ModelInfo)
+@app.api_route("/model-info", methods=LECTURA, response_model=ModelInfo)
 def model_info() -> ModelInfo:
     """Trazabilidad: qué versión y qué run está sirviendo peticiones."""
     if INFO is None:

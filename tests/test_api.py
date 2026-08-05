@@ -97,3 +97,18 @@ def test_predict_responde_503_sin_modelo(cliente):
     from src.api import main
     main.MODELO = None
     assert cliente.post("/predict", json=CLIENTE_VALIDO).status_code == 503
+
+
+@pytest.mark.parametrize("ruta", ["/health", "/ready", "/model-info"])
+def test_los_endpoints_de_lectura_aceptan_head(cliente, ruta):
+    """Un HEAD debe devolver lo mismo que un GET, sin cuerpo.
+
+    Sin esto, el HEAD cae al StaticFiles montado en '/' y devuelve 404:
+    'curl -I /health' contradiría a 'curl /health' delante del docente, y
+    cualquier monitor externo que sondee con HEAD daría el servicio por caído.
+    """
+    assert cliente.head(ruta).status_code == cliente.get(ruta).status_code
+
+
+def test_head_no_devuelve_cuerpo(cliente):
+    assert cliente.head("/health").content == b""
