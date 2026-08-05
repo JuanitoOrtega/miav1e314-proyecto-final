@@ -1,25 +1,78 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: modelo-api
+  name: telco-churn-api
+  labels:
+    app: telco-churn-api
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: modelo-api
+      app: telco-churn-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Nunca bajar de 2 pods sirviendo durante un rollout: es lo que permite
+      # promover un modelo nuevo sin corte de servicio.
+      maxUnavailable: 1
+      maxSurge: 1
   template:
     metadata:
       labels:
-        app: modelo-api
+        app: telco-churn-api
     spec:
       containers:
-        - name: modelo-api
-          image: nginx:alpine
+        - name: api
+          image: telco-churn-api:v1
+          # Obligatorio: la imagen se construye en el VPS y se importa a k3s
+          # con 'k3s ctr images import'. No existe en ningún registry remoto,
+          # así que sin esta directiva k3s intentaría descargarla y el pod
+          # quedaría en ImagePullBackOff.
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 80
-          command:
-            - /bin/sh
-            - -c
-            - |
-              echo "Servidor atendido por el Pod: $HOSTNAME" > /usr/share/nginx/html/index.html
-              nginx -g "daemon off;"
+            - name: http
+              containerPort: 8000
+          env:
+            # Downward API: cada pod conoce su propio nombre y lo devuelve en
+            # el campo served_by de cada respuesta. Es lo que hace demostrable
+            # el balanceo de carga en una sola línea de terminal.
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # La IP del nodo, NO localhost: los pods alcanzan el host por la
+            # interfaz de flannel, no por loopback. El runbook 03 sustituye
+            # el marcador con sed.
+            - name: MLFLOW_TRACKING_URI
+              value: "http://NODE_IP_PLACEHOLDER:5000"
+            - name: MODEL_ALIAS
+              value: "champion"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          # Liveness mira solo que el proceso viva. Si comprobara el modelo, un
+          # pod que no logra cargarlo se reiniciaría en bucle en lugar de
+          # quedar simplemente fuera del balanceo.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+          # Readiness sí lo comprueba: devuelve 200 solo con el modelo cargado.
+          # failureThreshold alto porque descargar el modelo del registry al
+          # arrancar puede tardar.
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 12
+      terminationGracePeriodSeconds: 20

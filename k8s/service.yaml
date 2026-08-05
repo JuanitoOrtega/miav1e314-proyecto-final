@@ -1,12 +1,19 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: modelo-api-service
+  name: telco-churn-api
+  labels:
+    app: telco-churn-api
 spec:
-  selector:
-    app: modelo-api
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
   type: NodePort
+  selector:
+    app: telco-churn-api
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http
+      # Puerto fijo, no aleatorio: nginx en el host hace proxy hacia
+      # 127.0.0.1:30080. Si k3s asignara un NodePort aleatorio, el vhost de
+      # churn.juanitodev.com apuntaría al vacío tras cada redespliegue.
+      nodePort: 30080
