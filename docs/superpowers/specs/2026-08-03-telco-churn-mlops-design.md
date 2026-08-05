@@ -258,10 +258,9 @@ proyecto-final/
 │   ├── REPARTO.md                   Tabla de quién construyó qué
 │   ├── evidencias/                  Imágenes y capturas referenciadas por EVIDENCIAS.md
 │   ├── runbooks/                    Comandos paso a paso, ejecutables por el equipo
-│   │   ├── 01-bootstrap-vps.md          Docker, MLflow + PostgreSQL, firewall
+│   │   ├── 01-bootstrap-vps.md          Docker, MLflow, PostgreSQL, firewall y TLS
 │   │   ├── 02-instalar-k3s.md           k3s con --disable=traefik y verificación de red
 │   │   ├── 03-build-y-deploy.md         docker build → ctr import → kubectl apply
-│   │   ├── 04-tls-y-subdominios.md      DNS, nginx y certbot para los dos subdominios
 │   │   ├── 05-demos-kubernetes.md       Las 4 demostraciones exigidas
 │   │   ├── 06-demo-mlflow.md            Guion de la demo en vivo de la UI de MLflow
 │   │   └── 07-demo-drift.md             Ejecución de la puerta de drift en verde y rojo
@@ -623,7 +622,7 @@ servicio desplegado en Kubernetes, no contra un proceso local: el navegador atac
 | 2 | Contenedor y API | `src/api/`, `Dockerfile`, `requirements.txt` | Imagen que levanta y responde sin pasos manuales |
 | 3 | Kubernetes | `k8s/`, runbooks `02`, `03`, `05` | Las 4 demostraciones con evidencia capturada |
 | 4 | Drift | `drift/` completo, runbook `07` | Puerta en verde y rojo, suite en verde, gráfica temporal |
-| 5 | Infraestructura, TLS, UI y documentación | `infra/`, `src/api/static/`, runbooks `01` y `04`, `docs/` | MLflow operativo, HTTPS en ambos subdominios, UI funcional, `ARQUITECTURA.md` |
+| 5 | Infraestructura, TLS, UI y documentación | `infra/`, `src/api/static/`, runbook `01`, `docs/` | MLflow operativo, HTTPS en ambos subdominios, UI funcional, `ARQUITECTURA.md` |
 
 Cada integrante trabaja en su propia rama y commitea con su autoría de git, de modo que el
 historial constituya la evidencia del reparto declarado, que es lo que el enunciado dice

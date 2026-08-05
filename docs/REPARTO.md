@@ -6,7 +6,7 @@
 | 2 | Ronal Silvio Callisaya Merlo | API y contenedor | `src/features.py`, `src/api/`, `Dockerfile`, `requirements.txt` |
 | 3 | Perseo Andrade | Kubernetes | `k8s/deployment.yaml`, `k8s/service.yaml`, runbooks 02, 03 y 05 |
 | 4 | Erika Uriona y Ricardo Pari | Detección de drift | `drift/` completo, runbook 07 |
-| 5 | Juanito Ortega | Infraestructura, TLS, UI y documentación | `infra/`, `src/api/static/`, `docs/`, runbooks 01 y 04 |
+| 5 | Juanito Ortega | Infraestructura, TLS, UI y documentación | `infra/`, `src/api/static/`, `docs/`, runbook 01 |
 
 ---
 
