@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Predicción de abandono — Telco Churn</title>
+  <style>
+    :root {
+      --borde: #d0d7de;
+      --fondo: #f6f8fa;
+      --panel: #ffffff;
+      --texto: #1f2328;
+      --tenue: #636c76;
+      --acento: #0969da;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --borde: #30363d;
+        --fondo: #0d1117;
+        --panel: #161b22;
+        --texto: #e6edf3;
+        --tenue: #8b949e;
+        --acento: #4493f8;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      margin: 0; padding: 2rem 1rem;
+      background: var(--fondo); color: var(--texto);
+      line-height: 1.5;
+    }
+    main {
+      max-width: 900px; margin: 0 auto; padding: 2rem;
+      background: var(--panel); border: 1px solid var(--borde);
+      border-radius: 10px;
+    }
+    h1 { margin: 0 0 .25rem; font-size: 1.5rem; }
+    .sub { color: var(--tenue); font-size: .9rem; margin: 0 0 1.5rem; }
+    .sub code {
+      background: var(--fondo); padding: .1rem .35rem;
+      border-radius: 4px; font-size: .85em;
+    }
+    fieldset { border: 0; padding: 0; margin: 0 0 1.25rem; }
+    legend {
+      font-size: .75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--tenue); padding: 0 0 .5rem;
+    }
+    .grid {
+      display: grid; gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    }
+    label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: .25rem; }
+    input, select {
+      width: 100%; padding: .5rem; font-size: .9rem;
+      border: 1px solid var(--borde); border-radius: 6px;
+      background: var(--panel); color: var(--texto);
+    }
+    input:focus, select:focus {
+      outline: 2px solid var(--acento); outline-offset: -1px;
+    }
+    button {
+      margin-top: .5rem; padding: .7rem 1.5rem; font-size: 1rem;
+      background: var(--acento); color: #fff;
+      border: 0; border-radius: 6px; cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: wait; }
+    #resultado {
+      margin-top: 1.5rem; padding: 1.25rem;
+      border-radius: 8px; display: none;
+    }
+    #resultado.churn    { background: #fff1f0; border: 1px solid #ffaba8; color: #82071e; }
+    #resultado.retiene  { background: #eafaef; border: 1px solid #a6e3b8; color: #0a5c2e; }
+    #resultado.error    { background: #fff8e6; border: 1px solid #f0d999; color: #7d4e00; }
+    .prob { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+    .meta {
+      margin-top: .75rem; padding-top: .75rem;
+      border-top: 1px solid rgba(0,0,0,.1);
+      font-size: .8rem; font-family: ui-monospace, "SF Mono", monospace;
+    }
+    .pod {
+      background: rgba(9,105,218,.12); padding: .15rem .45rem;
+      border-radius: 4px; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Predicción de abandono de clientes</h1>
+  <p class="sub">
+    Consume <code>POST /predict</code> del servicio desplegado en Kubernetes.
+    Cada respuesta indica qué pod la atendió: pulsa varias veces y verás cómo
+    cambia. Eso es el balanceo de carga en directo.
+  </p>
+
+  <form id="formulario">
+    <fieldset>
+      <legend>Contrato y facturación</legend>
+      <div class="grid">
+        <div>
+          <label for="tenure">Antigüedad (meses)</label>
+          <input type="number" id="tenure" name="tenure" value="12" min="0" max="100" required>
+        </div>
+        <div>
+          <label for="MonthlyCharges">Cargo mensual</label>
+          <input type="number" id="MonthlyCharges" name="MonthlyCharges" value="70.35" step="0.01" min="0" required>
+        </div>
+        <div>
+          <label for="TotalCharges">Cargo total acumulado</label>
+          <input type="number" id="TotalCharges" name="TotalCharges" value="844.20" step="0.01" min="0" required>
+        </div>
+        <div>
+          <label for="Contract">Tipo de contrato</label>
+          <select id="Contract" name="Contract">
+            <option>Month-to-month</option><option>One year</option><option>Two year</option>
+          </select>
+        </div>
+        <div>
+          <label for="PaperlessBilling">Facturación sin papel</label>
+          <select id="PaperlessBilling" name="PaperlessBilling"><option>Yes</option><option>No</option></select>
+        </div>
+        <div>
+          <label for="PaymentMethod">Método de pago</label>
+          <select id="PaymentMethod" name="PaymentMethod">
+            <option>Electronic check</option><option>Mailed check</option>
+            <option>Bank transfer (automatic)</option><option>Credit card (automatic)</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Datos del cliente</legend>
+      <div class="grid">
+        <div>
+          <label for="gender">Género</label>
+          <select id="gender" name="gender"><option>Female</option><option>Male</option></select>
+        </div>
+        <div>
+          <label for="SeniorCitizen">Tercera edad</label>
+          <select id="SeniorCitizen" name="SeniorCitizen">
+            <option value="0">No</option><option value="1">Sí</option>
+          </select>
+        </div>
+        <div>
+          <label for="Partner">Tiene pareja</label>
+          <select id="Partner" name="Partner"><option>Yes</option><option>No</option></select>
+        </div>
+        <div>
+          <label for="Dependents">Tiene dependientes</label>
+          <select id="Dependents" name="Dependents"><option>No</option><option>Yes</option></select>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Servicios contratados</legend>
+      <div class="grid">
+        <div>
+          <label for="PhoneService">Servicio telefónico</label>
+          <select id="PhoneService" name="PhoneService"><option>Yes</option><option>No</option></select>
+        </div>
+        <div>
+          <label for="MultipleLines">Líneas múltiples</label>
+          <select id="MultipleLines" name="MultipleLines">
+            <option>No</option><option>Yes</option><option>No phone service</option>
+          </select>
+        </div>
+        <div>
+          <label for="InternetService">Servicio de internet</label>
+          <select id="InternetService" name="InternetService">
+            <option>Fiber optic</option><option>DSL</option><option>No</option>
+          </select>
+        </div>
+        <div>
+          <label for="OnlineSecurity">Seguridad en línea</label>
+          <select id="OnlineSecurity" name="OnlineSecurity">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label for="OnlineBackup">Copia de seguridad</label>
+          <select id="OnlineBackup" name="OnlineBackup">
+            <option>Yes</option><option>No</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label for="DeviceProtection">Protección de dispositivo</label>
+          <select id="DeviceProtection" name="DeviceProtection">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label for="TechSupport">Soporte técnico</label>
+          <select id="TechSupport" name="TechSupport">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label for="StreamingTV">Streaming de TV</label>
+          <select id="StreamingTV" name="StreamingTV">
+            <option>Yes</option><option>No</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label for="StreamingMovies">Streaming de películas</label>
+          <select id="StreamingMovies" name="StreamingMovies">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <button type="submit" id="boton">Predecir</button>
+  </form>
+
+  <div id="resultado" role="status" aria-live="polite"></div>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
