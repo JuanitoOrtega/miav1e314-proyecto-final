@@ -41,6 +41,22 @@ services:
     # se saltan ufw por completo. Ver el runbook 01, paso 6.
     ports:
       - "5000:5000"
+    environment:
+      # MLflow 3 valida la cabecera Host como protección contra DNS rebinding.
+      # Por defecto solo acepta localhost y rangos privados, así que RECHAZA
+      # tanto 'mlflow.<dominio>' (lo que envía nginx) como la IP pública del
+      # nodo (lo que envían los pods de k3s). Sin esta variable, todas las
+      # llamadas a /api/ devuelven "Invalid Host header" y solo /health
+      # responde, que es lo que hace el fallo tan confuso de diagnosticar.
+      #
+      # OJO: la variable REEMPLAZA los valores por defecto, no los amplía
+      # (mlflow/server/fastapi_security.py: `from_env() or defaults()`), por
+      # eso hay que repetir localhost y los rangos privados aquí.
+      MLFLOW_SERVER_ALLOWED_HOSTS: >-
+        localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],
+        10.*,172.16.*,172.17.*,192.168.*,
+        ${NODE_IP},${NODE_IP}:*,
+        mlflow.${DOMAIN_BASE},mlflow.${DOMAIN_BASE}:*
     volumes:
       - mlflow_artifacts:/mlflow/artifacts
     command: >

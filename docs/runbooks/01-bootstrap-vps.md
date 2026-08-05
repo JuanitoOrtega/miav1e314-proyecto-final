@@ -118,6 +118,32 @@ del `DROP`):
 sudo iptables -L DOCKER-USER -n --line-numbers
 ```
 
+Salida esperada, en este orden exacto:
+
+```
+num  target  prot  source          destination
+1    RETURN  tcp   127.0.0.1       0.0.0.0/0   tcp dpt:5000
+2    RETURN  tcp   10.42.0.0/16    0.0.0.0/0   tcp dpt:5000
+3    DROP    tcp   0.0.0.0/0       0.0.0.0/0   tcp dpt:5000
+4    RETURN  all   0.0.0.0/0       0.0.0.0/0
+```
+
+> **Si la regla 4 (`RETURN all`) aparece ANTES del `DROP`, el cierre no
+> funciona.** Es el `RETURN` por defecto que Docker instala en la cadena, y
+> si nuestro `DROP` queda detrás nunca se evalúa: el puerto sigue abierto a
+> internet aunque las tres reglas figuren en el listado.
+>
+> Se arregla insertando el `DROP` por posición en lugar de añadirlo al final:
+>
+> ```bash
+> sudo iptables -D DOCKER-USER -p tcp --dport 5000 -j DROP   # quitar el mal puesto
+> sudo iptables -I DOCKER-USER 3 -p tcp --dport 5000 -j DROP # insertarlo en la 3
+> sudo netfilter-persistent save
+> ```
+>
+> Y volver a verificar **desde fuera del VPS** (paso 6). No basta con que la
+> regla aparezca: hay que comprobar que el puerto deja de responder.
+
 ---
 
 ## 5. Firewall
