@@ -29,14 +29,24 @@ curl -s ifconfig.me; echo    # debe coincidir con las dos anteriores
 
 ## 1. Clonar el repositorio y configurar el entorno
 
+> **El VPS sigue siempre `main`.** Es el entorno de producción: no debe
+> apuntar a una rama de trabajo, porque entonces lo desplegado depende de en
+> qué punto quedó esa rama. `main` es la única referencia consolidada.
+
 ```bash
-git clone https://github.com/JuanitoOrtega/<repo>.git ~/proyecto-final
-cd ~/proyecto-final
-git checkout Infraestructura
+git clone https://github.com/JuanitoOrtega/miav1e314-proyecto-final.git ~/miav1e314-proyecto-final
+cd ~/miav1e314-proyecto-final
+git checkout main
 
 cd infra
 cp .env.example .env
 nano .env
+```
+
+Para actualizar en despliegues posteriores basta con:
+
+```bash
+cd ~/miav1e314-proyecto-final && git checkout main && git pull
 ```
 
 En `.env`: dejar `DOMAIN_BASE=juanitodev.com` y poner una contraseña larga en
@@ -54,7 +64,7 @@ La primera vez construye la imagen de MLflow (añade el driver de PostgreSQL,
 que la imagen oficial no trae):
 
 ```bash
-cd ~/proyecto-final/infra
+cd ~/miav1e314-proyecto-final/infra
 docker compose up -d --build
 docker compose ps
 ```
@@ -251,7 +261,7 @@ sudo htpasswd -c /etc/nginx/.htpasswd mlops
 >    `restart`: recargar no corta las conexiones en curso.
 
 ```bash
-cd ~/proyecto-final
+cd ~/miav1e314-proyecto-final
 source infra/.env
 
 for sitio in churn mlflow; do
