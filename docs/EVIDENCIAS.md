@@ -268,12 +268,79 @@ reglas de iptables de probabilidad, no con un reparto por turnos estricto.
 
 ### 4.4 Demostración 3 — Autorreparación
 
-*Pendiente:* borrar un pod con tráfico en curso y comprobar que ninguna
-petición falla.
+Se borró el pod `telco-churn-api-5fd68dcc67-f8rlp` mientras un bucle enviaba
+peticiones continuas a `/health`.
+
+Kubernetes creó el sustituto automáticamente. La prueba queda visible en la
+salida posterior: el pod `tb25r` aparece con **108 segundos** de antigüedad
+frente a los **16 minutos** de `m9zsd` y `xjstb`, que son los originales.
+
+```
+$ kubectl get pods
+NAME                               READY   STATUS    RESTARTS   AGE
+telco-churn-api-5fd68dcc67-m9zsd   1/1     Running   0          16m    <- original
+telco-churn-api-5fd68dcc67-xjstb   1/1     Running   0          16m    <- original
+telco-churn-api-5fd68dcc67-tb25r   1/1     Running   0          108s   <- sustituto
+```
+
+El número de réplicas volvió a 3 sin intervención manual: el ReplicaSet
+reconcilia el estado real con el declarado.
+
+**Por qué el servicio no se interrumpe.** El `readinessProbe` retira al pod
+del `Service` en cuanto entra en terminación, así que deja de recibir tráfico
+antes de morir, y las otras dos réplicas absorben las peticiones mientras se
+crea el sustituto.
 
 ### 4.5 Demostración 4 — Escalado
 
-*Pendiente:* `kubectl scale` a 5 y a 2 réplicas.
+**Escalado a 5 réplicas:**
+
+```
+$ kubectl scale deployment telco-churn-api --replicas=5
+deployment.apps/telco-churn-api scaled
+
+$ kubectl get pods -w
+telco-churn-api-5fd68dcc67-jm5jm   0/1     Running   0     13s
+telco-churn-api-5fd68dcc67-s5822   0/1     Running   0     13s
+telco-churn-api-5fd68dcc67-jm5jm   1/1     Running   0     21s
+telco-churn-api-5fd68dcc67-s5822   1/1     Running   0     21s
+
+$ kubectl get pods
+NAME                               READY   STATUS    RESTARTS   AGE
+telco-churn-api-5fd68dcc67-jm5jm   1/1     Running   0          44s
+telco-churn-api-5fd68dcc67-m9zsd   1/1     Running   0          16m
+telco-churn-api-5fd68dcc67-s5822   1/1     Running   0          44s
+telco-churn-api-5fd68dcc67-tb25r   1/1     Running   0          2m19s
+telco-churn-api-5fd68dcc67-xjstb   1/1     Running   0          16m
+```
+
+Los dos pods nuevos pasan de `0/1` a `1/1` en **21 segundos**: es el tiempo
+que tardan en arrancar uvicorn y descargar el modelo del Model Registry. El
+`readinessProbe` los mantiene fuera del `Service` durante ese intervalo, así
+que no reciben tráfico hasta estar listos para responder.
+
+**Reducción a 2 réplicas:**
+
+```
+$ kubectl scale deployment telco-churn-api --replicas=2
+$ sleep 15 && kubectl get pods
+telco-churn-api-5fd68dcc67-m9zsd   1/1     Running   0          17m
+telco-churn-api-5fd68dcc67-xjstb   1/1     Running   0          17m
+```
+
+**Vuelta al estado base de 3 réplicas:**
+
+```
+$ kubectl scale deployment telco-churn-api --replicas=3
+$ sleep 30 && kubectl get pods
+telco-churn-api-5fd68dcc67-26k4d   1/1     Running   0          43s
+telco-churn-api-5fd68dcc67-m9zsd   1/1     Running   0          18m
+telco-churn-api-5fd68dcc67-xjstb   1/1     Running   0          18m
+```
+
+El escalado es **manual y declarativo**, como pide el enunciado. No hay
+HorizontalPodAutoscaler: se descartó a conciencia y está justificado en
+[`ARQUITECTURA.md`](ARQUITECTURA.md), §7.
 
 ---
 
@@ -340,12 +407,44 @@ bastaría para detectarlo.
 
 ## 6. TLS y exposición pública
 
-*Pendiente:* certificados válidos en ambos subdominios, redirección 80→443,
-`certbot renew --dry-run` y respuesta 401 de MLflow sin credenciales.
+Certificados de Let's Encrypt emitidos con `certbot --nginx --redirect` para
+ambos subdominios:
+
+```
+$ curl -sI http://mlflow.juanitodev.com/ | head -1
+HTTP/1.1 301 Moved Permanently          <- redirección forzada a HTTPS
+
+$ curl -sI https://mlflow.juanitodev.com/ | head -1
+HTTP/1.1 401 Unauthorized               <- protegido con auth básica
+
+$ curl -s -u mlops:<PASS> https://mlflow.juanitodev.com/health
+OK
+
+$ curl -sI https://churn.juanitodev.com/model-info | head -1
+HTTP/1.1 200 OK
+```
+
+Antes de desplegar el servicio, `churn.juanitodev.com` devolvía `502 Bad
+Gateway`: nginx enrutaba correctamente pero no había backend detrás. Que pasara
+a `200` sin tocar la configuración de nginx confirma que el proxy hacia el
+NodePort del `Service` funciona.
+
+Nótese que el vhost de MLflow devuelve **401 sin credenciales**: la interfaz
+no queda abierta a internet pese a ser públicamente accesible.
 
 ---
 
 ## 7. Puntos extra — UI web
 
-*Pendiente:* captura de la interfaz ejecutando predicciones reales contra
-`https://churn.juanitodev.com`, mostrando el cambio de `served_by` entre pods.
+La interfaz se sirve desde el mismo contenedor que la API, en
+`https://churn.juanitodev.com/`.
+
+**El consumo es real y contra el servicio desplegado en Kubernetes**, no
+contra un proceso local: el navegador ataca el subdominio público, nginx
+enruta al NodePort del `Service` y `kube-proxy` reparte entre las réplicas.
+
+Al pulsar **Predecir** varias veces, el campo mostrado bajo el resultado
+cambia de pod, igual que en la demostración 2. La interfaz es en sí misma una
+demostración visual del balanceo de carga.
+
+*Pendiente:* captura de pantalla del navegador con una predicción ejecutada.
