@@ -1,0 +1,39 @@
+# Vhost de mlflow.<DOMAIN_BASE> — UI y API de tracking de MLflow.
+#
+# Se declara SOLO en HTTP. 'certbot --nginx --redirect' añade el bloque 443
+# con los certificados y la redirección 80 -> 443, copiando estas mismas
+# directivas. Declarar 'listen 443 ssl' aquí haría fallar 'nginx -t' antes de
+# que exista el certificado, y certbot necesita nginx funcionando.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name mlflow.DOMAIN_BASE;
+
+    # MLflow sube los artefactos del modelo por HTTP. Sin esto, log_model
+    # falla con 413 Request Entity Too Large.
+    client_max_body_size 500M;
+
+    location / {
+        # MLflow no trae autenticación propia. Sin esto, cualquiera con la URL
+        # puede leer los experimentos y, peor, ESCRIBIR en el tracking server.
+        auth_basic           "MLflow - acceso restringido";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # La UI usa websockets para las actualizaciones en vivo
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Subir artefactos grandes puede tardar
+        proxy_read_timeout    300s;
+        proxy_send_timeout    300s;
+        proxy_request_buffering off;
+    }
+}

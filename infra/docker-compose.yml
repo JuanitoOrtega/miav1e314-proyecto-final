@@ -1,0 +1,62 @@
+# Plano de MLOps: MLflow Server + PostgreSQL.
+#
+# Vive FUERA de k3s a propósito (ver §3 del spec): MLflow es infraestructura
+# de soporte, no la carga desplegada. Meterlo en el clúster exigiría
+# StatefulSet y PVC sin aportar nada a la evaluación.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: mlflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Sin 'ports': solo alcanzable desde la red interna de Docker.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: mlflow.Dockerfile
+    image: telco-churn-mlflow:v1
+    container_name: mlflow-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Se publica en 0.0.0.0 A PROPÓSITO. Los pods de k3s alcanzan el host por
+    # la interfaz de flannel, NO por loopback: atarlo a 127.0.0.1 dejaría a
+    # todos los pods sin poder cargar el modelo.
+    #
+    # El cierre al exterior NO se hace aquí sino con una regla en la cadena
+    # DOCKER-USER de iptables, porque las publicaciones de puertos de Docker
+    # se saltan ufw por completo. Ver el runbook 01, paso 6.
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      --serve-artifacts
+      --artifacts-destination /mlflow/artifacts
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  postgres_data:
+  mlflow_artifacts:
