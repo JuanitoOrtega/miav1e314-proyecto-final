@@ -4,8 +4,11 @@ Salidas de terminal y capturas que respaldan cada requisito del enunciado.
 Cada entrada indica quién la produjo y con qué comando, para que sea
 reproducible durante la defensa.
 
-**Estado general:** en construcción. Las secciones marcadas *pendiente*
-se completan a medida que avanzan los runbooks.
+**Estado general:** completo. Todos los requisitos del enunciado tienen su
+evidencia registrada.
+
+> Presentación del informe final: [`informe-final.html`](../informe-final.html)
+> — ábrelo en el navegador y navega con las flechas del teclado.
 
 ---
 
@@ -444,7 +447,22 @@ contra un proceso local: el navegador ataca el subdominio público, nginx
 enruta al NodePort del `Service` y `kube-proxy` reparte entre las réplicas.
 
 Al pulsar **Predecir** varias veces, el campo mostrado bajo el resultado
-cambia de pod, igual que en la demostración 2. La interfaz es en sí misma una
-demostración visual del balanceo de carga.
+cambia de pod. La interfaz es en sí misma una demostración visual del
+balanceo de carga.
 
-*Pendiente:* captura de pantalla del navegador con una predicción ejecutada.
+**Cliente en riesgo — atendido por el pod `…-26k4d`:**
+
+![Predicción de 58,0 % de abandono](evidencias/prediccion2.png)
+
+**Cliente estable — atendido por el pod `…-m9zsd`:**
+
+![Predicción de 48,3 % de abandono](evidencias/prediccion3.png)
+
+**Dos capturas, dos réplicas distintas.** Misma interfaz, misma versión del
+modelo (`v2`), pods diferentes atendiendo. Es la demostración visual de que el
+consumo es real contra el servicio desplegado en Kubernetes y de que el
+`Service` reparte entre las réplicas.
+
+Una tercera captura, [`prediccion1.png`](evidencias/prediccion1.png), muestra
+un caso límite: 49,4 % de probabilidad, justo por debajo del umbral de
+decisión, clasificado como cliente estable.
