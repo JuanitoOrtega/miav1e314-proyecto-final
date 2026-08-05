@@ -7,8 +7,11 @@ reproducible durante la defensa.
 **Estado general:** completo. Todos los requisitos del enunciado tienen su
 evidencia registrada.
 
-> Presentación del informe final: [`informe-final.html`](../informe-final.html)
-> — ábrelo en el navegador y navega con las flechas del teclado.
+> Presentación del informe final:
+> [`src/api/static/presentacion.html`](../src/api/static/presentacion.html)
+> — la sirve la propia API en
+> [`churn.juanitodev.com/presentacion.html`](https://churn.juanitodev.com/presentacion.html).
+> Navega con las flechas del teclado.
 
 ---
 

@@ -82,16 +82,47 @@
       background: rgba(9,105,218,.12); padding: .15rem .45rem;
       border-radius: 4px; font-weight: 700;
     }
+    /* Cabecera: título a la izquierda, acceso a la presentación a la derecha */
+    .head {
+      display: flex; flex-wrap: wrap; gap: 1rem;
+      align-items: flex-start; justify-content: space-between;
+    }
+    .head > div { flex: 1 1 24rem; min-width: 0; }
+    .presentacion {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .6rem 1rem; border-radius: 6px; flex-shrink: 0;
+      border: 1px solid var(--acento); color: var(--acento);
+      background: transparent; text-decoration: none;
+      font-size: .88rem; font-weight: 600; white-space: nowrap;
+      transition: background .18s, color .18s;
+    }
+    .presentacion:hover, .presentacion:focus-visible {
+      background: var(--acento); color: #fff;
+    }
+    .presentacion:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+    .presentacion svg { width: 1rem; height: 1rem; flex-shrink: 0; }
   </style>
 </head>
 <body>
 <main>
-  <h1>Predicción de abandono de clientes</h1>
-  <p class="sub">
-    Consume <code>POST /predict</code> del servicio desplegado en Kubernetes.
-    Cada respuesta indica qué pod la atendió: pulsa varias veces y verás cómo
-    cambia. Eso es el balanceo de carga en directo.
-  </p>
+  <header class="head">
+    <div>
+      <h1>Predicción de abandono de clientes</h1>
+      <p class="sub">
+        Consume <code>POST /predict</code> del servicio desplegado en Kubernetes.
+        Cada respuesta indica qué pod la atendió: pulsa varias veces y verás cómo
+        cambia. Eso es el balanceo de carga en directo.
+      </p>
+    </div>
+    <a class="presentacion" href="/presentacion.html" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="1.5" y="2.5" width="13" height="9" rx="1"></rect>
+        <path d="M5.5 14.5h5M8 11.5v3"></path>
+      </svg>
+      Ver presentación del proyecto
+    </a>
+  </header>
 
   <form id="formulario">
     <fieldset>

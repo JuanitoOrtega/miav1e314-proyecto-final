@@ -16,6 +16,7 @@ from src.features import ALL_FEATURES
 ESTATICOS = Path("src/api/static")
 HTML = ESTATICOS / "index.html"
 JS = ESTATICOS / "app.js"
+PRESENTACION = ESTATICOS / "presentacion.html"
 
 
 @pytest.fixture(scope="module")
@@ -82,6 +83,27 @@ def test_el_js_llama_al_endpoint_correcto():
 def test_el_js_muestra_el_pod_que_atiende():
     """served_by es lo que convierte la UI en una demo del balanceo."""
     assert "served_by" in JS.read_text(encoding="utf-8")
+
+
+def test_la_presentacion_se_sirve_junto_a_la_interfaz(html):
+    """El enlace del botón debe resolver contra un fichero que existe.
+
+    La presentación se sirve desde el mismo StaticFiles que la interfaz, así
+    que basta con que el fichero esté en src/api/static/. Si alguien lo mueve
+    o lo renombra, el botón daría 404 delante del docente.
+    """
+    assert PRESENTACION.exists(), "Falta src/api/static/presentacion.html"
+    assert 'href="/presentacion.html"' in html
+
+
+def test_la_presentacion_es_autocontenida():
+    """No debe cargar nada de fuera: la demo puede hacerse sin conexión."""
+    contenido = PRESENTACION.read_text(encoding="utf-8")
+    externos = re.findall(r'(?:src|href)="(https?://[^"]+)"', contenido)
+    remotos = [u for u in externos if not u.startswith("https://churn.juanitodev.com")
+               and not u.startswith("https://mlflow.juanitodev.com")]
+    assert not remotos, f"La presentación carga recursos externos: {remotos}"
+    assert "data:image/" in contenido, "Las imágenes deberían ir incrustadas"
 
 
 def test_el_js_no_apunta_a_una_url_absoluta():

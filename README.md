@@ -166,7 +166,7 @@ devuelve nombres distintos y demuestra el balanceo de carga.
 
 | Documento | Contenido |
 |---|---|
-| [informe-final.html](informe-final.html) | **Presentación del informe final.** Ábrela en el navegador y navega con las flechas |
+| [presentacion.html](src/api/static/presentacion.html) | **Presentación del informe final.** También accesible desde el botón de la interfaz o en `https://churn.juanitodev.com/presentacion.html` |
 | [ARQUITECTURA.md](docs/ARQUITECTURA.md) | Decisiones de diseño y su justificación |
 | [EVIDENCIAS.md](docs/EVIDENCIAS.md) | Salidas que respaldan cada requisito |
 | [REPARTO.md](docs/REPARTO.md) | Qué construyó cada integrante |
