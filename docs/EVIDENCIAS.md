@@ -453,19 +453,48 @@ Al pulsar **Predecir** varias veces, el campo mostrado bajo el resultado
 cambia de pod. La interfaz es en sí misma una demostración visual del
 balanceo de carga.
 
-**Cliente en riesgo — atendido por el pod `…-26k4d`:**
+### 7.1 Trazabilidad visible al cargar la página
 
-![Predicción de 58,0 % de abandono](evidencias/prediccion2.png)
+Al abrir la interfaz consulta `GET /model-info` y muestra en pantalla el
+estado del servicio, el modelo, la versión, el alias y el `run_id`:
 
-**Cliente estable — atendido por el pod `…-m9zsd`:**
+```
+● servicio operativo   MODELO telco-churn   VERSIÓN 2   ALIAS champion
+RUN 140470a3690b4e37829cb13bc23ece0b
+```
 
-![Predicción de 48,3 % de abandono](evidencias/prediccion3.png)
+![Interfaz al cargar, con el panel de trazabilidad](evidencias/ui-inicial.png)
 
-**Dos capturas, dos réplicas distintas.** Misma interfaz, misma versión del
-modelo (`v2`), pods diferentes atendiendo. Es la demostración visual de que el
+Ese `run_id` coincide con el de la versión marcada en el Model Registry
+(§2.3). **La trazabilidad que exige §3.3 del enunciado se comprueba sin
+teclear un solo comando.**
+
+### 7.2 Cliente en riesgo
+
+Antigüedad de 2 meses, contrato mensual, fibra óptica y sin soporte técnico:
+
+![Predicción de 72,1 % de abandono](evidencias/ui-riesgo.png)
+
+**72,1 %** · cliente en riesgo · atendido por
+`telco-churn-api-66998c588b-pww99`
+
+### 7.3 Cliente estable
+
+Antigüedad de 68 meses, contrato de dos años, DSL con soporte y seguridad:
+
+![Predicción de 2,9 % de abandono](evidencias/ui-estable.png)
+
+**2,9 %** · cliente estable · atendido por
+`telco-churn-api-66998c588b-t74kz`
+
+**Dos peticiones consecutivas, dos réplicas distintas** (`pww99` y `t74kz`).
+Misma interfaz y misma versión del modelo: es la demostración visual de que el
 consumo es real contra el servicio desplegado en Kubernetes y de que el
 `Service` reparte entre las réplicas.
 
-Una tercera captura, [`prediccion1.png`](evidencias/prediccion1.png), muestra
-un caso límite: 49,4 % de probabilidad, justo por debajo del umbral de
-decisión, clasificado como cliente estable.
+El contraste entre ambos casos —72,1 % frente a 2,9 %— muestra además que el
+modelo discrimina de forma coherente con el negocio: el contrato mensual sin
+permanencia y la antigüedad baja son los factores de riesgo esperados.
+
+> Capturas tomadas contra `https://churn.juanitodev.com` con un navegador
+> automatizado, no con la aplicación en local.
