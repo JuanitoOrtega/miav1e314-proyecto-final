@@ -708,6 +708,8 @@ git commit -m "feat: entrenamiento de los 6 runs con tracking en MLflow"
   - `best_run_id(experiment_name: str, metric: str = "roc_auc") -> str`
   - `register_run(run_id: str, model_name: str = MODEL_NAME) -> int` (devuelve el número de versión)
   - `set_champion(version: int, model_name: str = MODEL_NAME) -> None`
+  - `model_uri_for_run(run_id: str, artifact_name: str = "model") -> str` — resuelve el `models:/m-<id>` de MLflow 3
+  - `champion_info(model_name: str = MODEL_NAME) -> dict` — `model_name`, `version`, `run_id`, `alias`
   - `register_dummy(model_name: str = MODEL_NAME) -> int` — modelo trivial para desbloquear la API el día 1
 
 - [ ] **Step 1: Escribir los tests**
