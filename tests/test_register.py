@@ -51,6 +51,27 @@ def test_register_run_crea_versiones_incrementales(experimento):
     assert register_run(ids[1], "modelo-incremental") == 2
 
 
+def test_register_run_no_emite_el_warning_de_uri_heredado(experimento, caplog):
+    """MLflow 3 registra los modelos como 'logged models' con URI models:/<id>.
+
+    Usar el URI heredado 'runs:/<run_id>/model' funciona, pero MLflow emite un
+    WARNING de fallback que ensucia la demo en vivo. Se resuelve el model_id
+    explícitamente para que el registro sea limpio.
+    """
+    _, ids = experimento
+    with caplog.at_level("WARNING"):
+        register_run(ids[0], "modelo-sin-warning")
+    assert "has no artifacts at artifact path" not in caplog.text
+
+
+def test_model_uri_for_run_resuelve_el_logged_model(experimento):
+    from src.register import model_uri_for_run
+
+    _, ids = experimento
+    uri = model_uri_for_run(ids[0])
+    assert uri.startswith("models:/m-")
+
+
 def test_set_champion_apunta_el_alias_a_la_version(experimento):
     _, ids = experimento
     version = register_run(ids[0], "modelo-alias")

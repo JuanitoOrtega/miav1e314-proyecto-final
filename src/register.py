@@ -42,9 +42,31 @@ def best_run_id(experiment_name: str = EXPERIMENT_NAME, metric: str = "roc_auc")
     return runs.iloc[0]["run_id"]
 
 
+def model_uri_for_run(run_id: str, artifact_name: str = "model") -> str:
+    """Devuelve el URI del modelo asociado a un run.
+
+    MLflow 3 registra los modelos como 'logged models' con identidad propia
+    (`models:/m-<id>`). El URI heredado `runs:/<run_id>/model` sigue
+    funcionando, pero MLflow emite un WARNING de fallback que ensucia la
+    salida durante una demostración en vivo. Se resuelve el model_id de forma
+    explícita y se cae al URI heredado solo si no se encuentra.
+    """
+    run = mlflow.get_run(run_id)
+    modelos = mlflow.search_logged_models(
+        experiment_ids=[run.info.experiment_id],
+        filter_string=f"source_run_id='{run_id}'",
+        output_format="list",
+    )
+    for modelo in modelos:
+        if modelo.name == artifact_name:
+            return f"models:/{modelo.model_id}"
+
+    return f"runs:/{run_id}/{artifact_name}"
+
+
 def register_run(run_id: str, model_name: str = MODEL_NAME) -> int:
     """Registra el modelo de un run como una nueva versión del registro."""
-    resultado = mlflow.register_model(f"runs:/{run_id}/model", model_name)
+    resultado = mlflow.register_model(model_uri_for_run(run_id), model_name)
     return int(resultado.version)
 
 
