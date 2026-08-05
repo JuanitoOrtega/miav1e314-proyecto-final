@@ -8,6 +8,35 @@ const CAMPOS_NUMERICOS = ["tenure", "MonthlyCharges", "TotalCharges"];
 const formulario = document.getElementById("formulario");
 const boton = document.getElementById("boton");
 const caja = document.getElementById("resultado");
+const trazabilidad = document.getElementById("trazabilidad");
+
+/** Muestra qué modelo está sirviendo, sin que nadie tenga que usar curl.
+ *
+ * El run_id es la pieza que vincula el servicio con el experimento que lo
+ * produjo: es el mismo que figura en el Model Registry de MLflow.
+ */
+async function mostrarTrazabilidad() {
+  try {
+    const r = await fetch("/model-info");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const m = await r.json();
+
+    trazabilidad.innerHTML = `
+      <span class="estado ok"><span class="luz"></span>servicio operativo</span>
+      <span class="par"><span class="et">modelo</span><span class="va">${m.model_name}</span></span>
+      <span class="par"><span class="et">versión</span><span class="va">${m.version}</span></span>
+      <span class="par"><span class="et">alias</span><span class="va">${m.alias}</span></span>
+      <span class="par"><span class="et">run</span>
+        <span class="va run" title="${m.run_id}">${m.run_id}</span>
+      </span>`;
+  } catch (error) {
+    trazabilidad.innerHTML = `
+      <span class="estado mal"><span class="luz"></span>servicio no disponible</span>
+      <span class="par">${error.message}</span>`;
+  }
+}
+
+mostrarTrazabilidad();
 
 /** Convierte el formulario al contrato que espera la API. */
 function leerFormulario(form) {

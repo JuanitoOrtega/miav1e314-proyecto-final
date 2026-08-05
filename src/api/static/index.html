@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.ico" sizes="any">
   <title>Predicción de abandono — Telco Churn</title>
   <style>
     :root {
@@ -101,6 +102,26 @@
     }
     .presentacion:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
     .presentacion svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+    /* Trazabilidad: qué modelo sirve las peticiones, visible sin usar curl */
+    #trazabilidad {
+      display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; align-items: center;
+      margin: 1.25rem 0 0; padding: .7rem .9rem;
+      background: var(--fondo); border: 1px solid var(--borde); border-radius: 8px;
+      font-family: ui-monospace, "SF Mono", monospace; font-size: .78rem;
+      color: var(--tenue);
+    }
+    #trazabilidad .par { display: inline-flex; gap: .4rem; align-items: baseline; }
+    #trazabilidad .et { text-transform: uppercase; letter-spacing: .06em; font-size: .68rem; }
+    #trazabilidad .va { color: var(--texto); font-weight: 600; }
+    #trazabilidad .run {
+      max-width: 15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .estado { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; }
+    .luz { width: .5rem; height: .5rem; border-radius: 50%; background: var(--tenue); }
+    .estado.ok .luz  { background: #1a7f37; }
+    .estado.ok       { color: #0a5c2e; }
+    .estado.mal .luz { background: #cf222e; }
+    .estado.mal      { color: #82071e; }
   </style>
 </head>
 <body>
@@ -123,6 +144,11 @@
       Ver presentación del proyecto
     </a>
   </header>
+
+  <!-- Se rellena al cargar la página con GET /model-info -->
+  <div id="trazabilidad" aria-live="polite">
+    <span class="estado" id="estado"><span class="luz"></span>consultando el servicio…</span>
+  </div>
 
   <form id="formulario">
     <fieldset>

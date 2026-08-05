@@ -114,6 +114,32 @@ def test_la_presentacion_es_autocontenida():
     assert "data:image/" in contenido, "Las imágenes deberían ir incrustadas"
 
 
+def test_la_presentacion_es_un_documento_html_completo():
+    """Debe poder abrirse con doble clic, no solo servida por la API.
+
+    Sin <meta charset>, al abrirla como file:// no hay cabecera HTTP que
+    declare la codificación y los acentos se rompen.
+    """
+    contenido = PRESENTACION.read_text(encoding="utf-8")
+    for marca in ["<!doctype html>", '<html lang="es">', "<head>", "<body>",
+                  '<meta charset="utf-8">', "viewport"]:
+        assert marca in contenido, f"Falta {marca} en la presentación"
+
+
+def test_ambas_paginas_declaran_el_favicon(html):
+    assert (ESTATICOS / "favicon.ico").exists(), "Falta src/api/static/favicon.ico"
+    assert 'href="/favicon.ico"' in html
+    assert 'href="/favicon.ico"' in PRESENTACION.read_text(encoding="utf-8")
+
+
+def test_la_interfaz_muestra_la_trazabilidad(html):
+    """El run_id debe verse en pantalla, sin obligar a nadie a usar curl."""
+    assert 'id="trazabilidad"' in html
+    contenido = JS.read_text(encoding="utf-8")
+    assert '"/model-info"' in contenido
+    assert "run_id" in contenido
+
+
 def test_la_presentacion_enlaza_al_repositorio():
     contenido = PRESENTACION.read_text(encoding="utf-8")
     assert "github.com/JuanitoOrtega/miav1e314-proyecto-final" in contenido
