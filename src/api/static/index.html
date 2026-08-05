@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Predicción de abandono — Telco Churn</title>
+  <style>
+    :root { --borde:#d0d7de; --fondo:#f6f8fa; --texto:#1f2328; --acento:#0969da; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin:0;
+           padding:2rem 1rem; background:var(--fondo); color:var(--texto); }
+    main { max-width:840px; margin:0 auto; background:#fff; padding:2rem;
+           border:1px solid var(--borde); border-radius:10px; }
+    h1 { margin-top:0; font-size:1.5rem; }
+    .sub { color:#636c76; font-size:.9rem; margin-bottom:1.5rem; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1rem; }
+    label { display:block; font-size:.8rem; font-weight:600; margin-bottom:.25rem; }
+    input, select { width:100%; padding:.5rem; border:1px solid var(--borde);
+                    border-radius:6px; font-size:.9rem; background:#fff; }
+    button { margin-top:1.5rem; padding:.7rem 1.5rem; background:var(--acento);
+             color:#fff; border:0; border-radius:6px; font-size:1rem; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:wait; }
+    #resultado { margin-top:1.5rem; padding:1.25rem; border-radius:8px; display:none; }
+    #resultado.churn { background:#fff1f0; border:1px solid #ffaba8; }
+    #resultado.retiene { background:#eafaef; border:1px solid #a6e3b8; }
+    #resultado.error { background:#fff8e6; border:1px solid #f0d999; }
+    .prob { font-size:2rem; font-weight:700; }
+    .meta { margin-top:.75rem; font-size:.8rem; color:#636c76; font-family:ui-monospace,monospace; }
+    .pod { background:#ddf4ff; padding:.15rem .45rem; border-radius:4px; font-weight:600; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Predicción de abandono de clientes</h1>
+  <p class="sub">
+    Consume <code>POST /predict</code> del servicio desplegado en Kubernetes.
+    Cada respuesta indica qué pod la atendió: pulsa varias veces y verás
+    cómo cambia — eso es el balanceo de carga en directo.
+  </p>
+
+  <form id="formulario">
+    <div class="grid">
+      <div><label>Antigüedad (meses)</label><input type="number" name="tenure" value="12" min="0" max="100" required></div>
+      <div><label>Cargo mensual</label><input type="number" name="MonthlyCharges" value="70.35" step="0.01" min="0" required></div>
+      <div><label>Cargo total</label><input type="number" name="TotalCharges" value="844.20" step="0.01" min="0" required></div>
+
+      <div><label>Género</label><select name="gender"><option>Female</option><option>Male</option></select></div>
+      <div><label>Tercera edad</label><select name="SeniorCitizen"><option value="0">No</option><option value="1">Sí</option></select></div>
+      <div><label>Pareja</label><select name="Partner"><option>Yes</option><option>No</option></select></div>
+      <div><label>Dependientes</label><select name="Dependents"><option>No</option><option>Yes</option></select></div>
+      <div><label>Servicio telefónico</label><select name="PhoneService"><option>Yes</option><option>No</option></select></div>
+      <div><label>Líneas múltiples</label><select name="MultipleLines"><option>No</option><option>Yes</option><option>No phone service</option></select></div>
+      <div><label>Servicio de internet</label><select name="InternetService"><option>Fiber optic</option><option>DSL</option><option>No</option></select></div>
+      <div><label>Seguridad en línea</label><select name="OnlineSecurity"><option>No</option><option>Yes</option><option>No internet service</option></select></div>
+      <div><label>Copia de seguridad</label><select name="OnlineBackup"><option>Yes</option><option>No</option><option>No internet service</option></select></div>
+      <div><label>Protección de dispositivo</label><select name="DeviceProtection"><option>No</option><option>Yes</option><option>No internet service</option></select></div>
+      <div><label>Soporte técnico</label><select name="TechSupport"><option>No</option><option>Yes</option><option>No internet service</option></select></div>
+      <div><label>Streaming TV</label><select name="StreamingTV"><option>Yes</option><option>No</option><option>No internet service</option></select></div>
+      <div><label>Streaming películas</label><select name="StreamingMovies"><option>No</option><option>Yes</option><option>No internet service</option></select></div>
+      <div><label>Tipo de contrato</label><select name="Contract"><option>Month-to-month</option><option>One year</option><option>Two year</option></select></div>
+      <div><label>Facturación sin papel</label><select name="PaperlessBilling"><option>Yes</option><option>No</option></select></div>
+      <div><label>Método de pago</label><select name="PaymentMethod">
+        <option>Electronic check</option><option>Mailed check</option>
+        <option>Bank transfer (automatic)</option><option>Credit card (automatic)</option>
+      </select></div>
+    </div>
+
+    <button type="submit" id="boton">Predecir</button>
+  </form>
+
+  <div id="resultado"></div>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

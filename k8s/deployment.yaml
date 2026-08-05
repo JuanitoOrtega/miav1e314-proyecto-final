@@ -1,25 +1,60 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: modelo-api
+  name: telco-churn-api
+  labels:
+    app: telco-churn-api
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: modelo-api
+      app: telco-churn-api
   template:
     metadata:
       labels:
-        app: modelo-api
+        app: telco-churn-api
     spec:
       containers:
-        - name: modelo-api
-          image: nginx:alpine
+        - name: api
+          image: telco-churn-api:v1
+          # Obligatorio: la imagen se importa localmente al clúster y no
+          # existe en ningún registry remoto. Sin esto, k3s intentaría
+          # descargarla y el pod quedaría en ImagePullBackOff.
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 80
-          command:
-            - /bin/sh
-            - -c
-            - |
-              echo "Servidor atendido por el Pod: $HOSTNAME" > /usr/share/nginx/html/index.html
-              nginx -g "daemon off;"
+            - containerPort: 8000
+          env:
+            # Downward API: cada pod conoce su propio nombre y lo devuelve
+            # en served_by. Es lo que hace demostrable el balanceo de carga.
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # NODE_IP_PLACEHOLDER se sustituye por la IP real del nodo en el
+            # runbook 03. No se escribe a mano porque cambia entre entornos.
+            - name: MLFLOW_TRACKING_URI
+              value: "http://NODE_IP_PLACEHOLDER:5000"
+            - name: MODEL_ALIAS
+              value: "champion"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            # 12 intentos x 5s = 60s de margen para que el pod descargue el
+            # modelo desde MLflow antes de darse por fallido.
+            failureThreshold: 12

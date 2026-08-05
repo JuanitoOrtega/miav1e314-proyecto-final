@@ -1,0 +1,4 @@
+# Unifica identidades de git para que `git shortlog -sne` refleje el reparto
+# real. Ricardo commiteó desde dos equipos con correos distintos.
+Ricardo Pari <rikiricardo16@hotmail.com> <ricardoparicahuna@gmail.com>
+Erika Uriona <uriona.erika@gmail.com> Erika2482 <uriona.erika@gmail.com>

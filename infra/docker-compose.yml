@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: mlflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Sin 'ports': solo accesible desde la red interna de Docker.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      retries: 5
+
+  mlflow:
+    # python:3.11-slim + pip install en el arranque, porque el pull anónimo
+    # de ghcr.io/mlflow/mlflow:v2.19.0 devuelve 'denied'. La versión de
+    # MLflow queda fijada igualmente en el comando de abajo.
+    image: python:3.11-slim
+    container_name: mlflow-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Se publica en 0.0.0.0 a propósito: los pods de k3s llegan por la
+    # interfaz de flannel, NO por loopback. Ver §3.2 del spec.
+    # El cierre al exterior se hace con la regla de DOCKER-USER del runbook 01.
+    #
+    # NOTA SIMULACIÓN LOCAL (macOS): el puerto del host es ${MLFLOW_HOST_PORT}
+    # porque AirPlay ocupa el 5000. En el VPS, MLFLOW_HOST_PORT=5000.
+    ports:
+      - "${MLFLOW_HOST_PORT:-5000}:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    # --allowed-hosts es OBLIGATORIO en MLflow 3: por defecto solo acepta
+    # peticiones cuyo Host sea localhost o una IP privada, y devuelve
+    # 403 "Invalid Host header - possible DNS rebinding attack" al resto.
+    # Sin esta bandera fallan DOS cosas:
+    #   1. Los pods que llaman por el nombre/IP del nodo.
+    #   2. nginx, que proxya con Host: mlflow.<dominio> (el TLS del runbook 04).
+    #
+    # REGLA IMPORTANTE, comprobada a mano: las entradas literales tienen que
+    # coincidir con el Host ENTERO, puerto incluido — 'localhost' NO acepta
+    # 'localhost:5001'. Los comodines sí absorben el puerto, y por eso
+    # '10.*' cubre a los pods que llegan por la IP privada del nodo.
+    command: >
+      sh -c "pip install --no-cache-dir mlflow==3.15.1 psycopg2-binary boto3 &&
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      --serve-artifacts
+      --artifacts-destination /mlflow/artifacts
+      --allowed-hosts 'mlflow.${DOMAIN_BASE},mlflow.${DOMAIN_BASE}:443,localhost,localhost:${MLFLOW_HOST_PORT:-5000},127.0.0.1,127.0.0.1:${MLFLOW_HOST_PORT:-5000},host.docker.internal:${MLFLOW_HOST_PORT:-5000},10.*,172.*,192.168.*'"
+
+volumes:
+  postgres_data:
+  mlflow_artifacts:
