@@ -122,13 +122,60 @@ sudo iptables -L DOCKER-USER -n --line-numbers
 
 ## 5. Firewall
 
+Política por defecto: **denegar todo lo entrante**, y abrir solo tres puertos.
+
+| Puerto | Para qué | ¿Por qué no más? |
+|---|---|---|
+| 22 | SSH | Sin él te quedas fuera del servidor |
+| 80 | Reto HTTP-01 de certbot y redirección a 443 | Let's Encrypt valida por aquí |
+| 443 | Todo el tráfico real (API, UI, MLflow) | nginx es la única puerta de entrada |
+
+`5000` (MLflow) y `30080` (NodePort) **no se abren**: se alcanzan solo desde
+`127.0.0.1`, que es donde los busca nginx. Y `5000` tampoco lo gobierna `ufw`
+—por eso existe el paso 4—.
+
+**Antes de habilitar nada, confirma en qué puerto escucha tu SSH.** Si no es
+el 22 y abres solo el 22, te quedas fuera del servidor:
+
 ```bash
-sudo ufw allow 22/tcp
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
+sudo ss -tlnp | grep sshd
+```
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+sudo ufw allow 22/tcp   comment 'SSH'
+sudo ufw allow 80/tcp   comment 'HTTP - reto ACME y redireccion'
+sudo ufw allow 443/tcp  comment 'HTTPS - nginx'
+```
+
+### Reglas para k3s — imprescindibles, aunque k3s todavía no esté instalado
+
+> `ufw` pone la política de la cadena `FORWARD` en `DROP`. El tráfico entre
+> pods de Kubernetes **se enruta, no se entrega localmente**, así que pasa por
+> `FORWARD` y `ufw` lo descarta. El síntoma no es un error de firewall: son
+> pods que no resuelven DNS, `CrashLoopBackOff` de CoreDNS y readiness probes
+> que fallan sin motivo aparente. Perseo perdería horas buscando en el sitio
+> equivocado.
+>
+> Se añaden ahora, antes de habilitar `ufw`, para que el clúster nazca sano.
+
+```bash
+sudo ufw allow from 10.42.0.0/16 to any comment 'k3s pods'
+sudo ufw allow from 10.43.0.0/16 to any comment 'k3s services'
+sudo ufw default allow routed
+```
+
+Ahora sí:
+
+```bash
 sudo ufw --force enable
 sudo ufw status verbose
 ```
+
+Esperado en `status verbose`: `Default: deny (incoming), allow (outgoing),
+allow (routed)` y las cinco reglas anteriores.
 
 ---
 
