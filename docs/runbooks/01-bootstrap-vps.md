@@ -236,6 +236,20 @@ sudo htpasswd -c /etc/nginx/.htpasswd mlops
 
 ## 8. Instalar los vhosts de nginx
 
+> **Este nginx sirve otros sitios en producción** (`billing`, `erp`, `n8n`,
+> `pgadmin`, `phpmyadmin`, `evolution`). Dos consecuencias:
+>
+> 1. **NO se borra `/etc/nginx/sites-enabled/default`.** Ese fichero es el
+>    `default_server` del servidor (`listen 80 default_server; server_name _;`).
+>    Quitarlo dejaría sin catch-all a nginx, que pasaría a usar como servidor
+>    por defecto el primer bloque que cargue —probablemente `billing`—, de modo
+>    que cualquier petición con un `Host` desconocido acabaría en un sitio real.
+>    Nuestros vhosts no lo necesitan: nginx enruta por `server_name`.
+>
+> 2. **Siempre `nginx -t` antes de recargar.** Un error de sintaxis en nuestros
+>    ficheros tumbaría los seis sitios existentes. Y se usa `reload`, nunca
+>    `restart`: recargar no corta las conexiones en curso.
+
 ```bash
 cd ~/proyecto-final
 source infra/.env
@@ -247,11 +261,22 @@ for sitio in churn mlflow; do
               /etc/nginx/sites-enabled/$sitio.conf
 done
 
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
+sudo nginx -t
 ```
 
-`nginx -t` debe pasar: los vhosts son solo HTTP todavía.
+Solo si `nginx -t` dice `syntax is ok` y `test is successful`:
+
+```bash
+sudo systemctl reload nginx
+```
+
+Comprobar que los sitios que ya existían siguen respondiendo:
+
+```bash
+for s in billing erp n8n pgadmin phpmyadmin evolution; do
+  printf "%-12s %s\n" "$s" "$(curl -sI -o /dev/null -w '%{http_code}' https://$s.juanitodev.com/)"
+done
+```
 
 Comprobar que el proxy de MLflow ya funciona (pedirá usuario y contraseña):
 
