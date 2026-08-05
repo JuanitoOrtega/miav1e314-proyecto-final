@@ -96,14 +96,35 @@ def test_la_presentacion_se_sirve_junto_a_la_interfaz(html):
     assert 'href="/presentacion.html"' in html
 
 
+# Destinos que SÍ puede enlazar la presentación: son enlaces de navegación
+# que el docente pulsa, no recursos que el navegador cargue al abrir la página.
+ENLACES_PERMITIDOS = (
+    "https://churn.juanitodev.com",
+    "https://mlflow.juanitodev.com",
+    "https://github.com/JuanitoOrtega/miav1e314-proyecto-final",
+)
+
+
 def test_la_presentacion_es_autocontenida():
-    """No debe cargar nada de fuera: la demo puede hacerse sin conexión."""
+    """No debe cargar ningún recurso de fuera: la demo funciona sin conexión."""
     contenido = PRESENTACION.read_text(encoding="utf-8")
     externos = re.findall(r'(?:src|href)="(https?://[^"]+)"', contenido)
-    remotos = [u for u in externos if not u.startswith("https://churn.juanitodev.com")
-               and not u.startswith("https://mlflow.juanitodev.com")]
+    remotos = [u for u in externos if not u.startswith(ENLACES_PERMITIDOS)]
     assert not remotos, f"La presentación carga recursos externos: {remotos}"
     assert "data:image/" in contenido, "Las imágenes deberían ir incrustadas"
+
+
+def test_la_presentacion_enlaza_al_repositorio():
+    contenido = PRESENTACION.read_text(encoding="utf-8")
+    assert "github.com/JuanitoOrtega/miav1e314-proyecto-final" in contenido
+
+
+def test_los_enlaces_externos_abren_en_pestana_nueva():
+    """Salir de la presentación a media defensa perdería la lámina actual."""
+    contenido = PRESENTACION.read_text(encoding="utf-8")
+    for etiqueta in re.findall(r'<a\b[^>]*href="https?://[^>]*>', contenido):
+        assert 'target="_blank"' in etiqueta, f"Enlace sin pestaña nueva: {etiqueta[:80]}"
+        assert 'rel="noopener"' in etiqueta, f"Enlace sin rel=noopener: {etiqueta[:80]}"
 
 
 def test_el_js_no_apunta_a_una_url_absoluta():
