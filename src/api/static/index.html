@@ -6,29 +6,20 @@
   <link rel="icon" href="/favicon.ico" sizes="any">
   <title>Predicción de abandono — Telco Churn</title>
   <style>
+    /* Paleta institucional. Tema único claro: el logotipo y la identidad de
+       la Unidad de Posgrado están pensados para fondo claro. */
     :root {
-      --borde: #DCE4EE;
-      --fondo: #F6F8FB;
-      --panel: #FFFFFF;
-      --texto: #0B2340;
-      --tenue: #5B6B80;
-      --acento: #14315C;
+      --marino: #14315C;      /* principal */
+      --rojo:   #D6141E;      /* principal */
+      --borde:  #DCE4EE;
+      --fondo:  #F6F8FB;
+      --panel:  #FFFFFF;
+      --texto:  #0B2340;
+      --tenue:  #5B6B80;
+      --acento: var(--marino);
       --acento-suave: rgba(20,49,92,.12);
       --ok: #1F7D4E;
-      --mal: #C2141D;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --borde: #1E4368;
-        --fondo: #071726;
-        --panel: #0E2438;
-        --texto: #E9EFF7;
-        --tenue: #8FA3BC;
-        --acento: #5E9AD8;
-        --acento-suave: rgba(94,154,216,.18);
-        --ok: #3FAE77;
-        --mal: #E8535A;
-      }
+      --mal: var(--rojo);
     }
     * { box-sizing: border-box; }
     body {
@@ -51,7 +42,7 @@
     fieldset { border: 0; padding: 0; margin: 0 0 1.25rem; }
     legend {
       font-size: .75rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .05em; color: var(--tenue); padding: 0 0 .5rem;
+      letter-spacing: .05em; color: var(--rojo); padding: 0 0 .5rem;
     }
     .grid {
       display: grid; gap: 1rem;
