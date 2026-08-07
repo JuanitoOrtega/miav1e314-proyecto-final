@@ -7,21 +7,27 @@
   <title>Predicción de abandono — Telco Churn</title>
   <style>
     :root {
-      --borde: #d0d7de;
-      --fondo: #f6f8fa;
-      --panel: #ffffff;
-      --texto: #1f2328;
-      --tenue: #636c76;
-      --acento: #0969da;
+      --borde: #DCE4EE;
+      --fondo: #F6F8FB;
+      --panel: #FFFFFF;
+      --texto: #0B2340;
+      --tenue: #5B6B80;
+      --acento: #14315C;
+      --acento-suave: rgba(20,49,92,.12);
+      --ok: #1F7D4E;
+      --mal: #C2141D;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --borde: #30363d;
-        --fondo: #0d1117;
-        --panel: #161b22;
-        --texto: #e6edf3;
-        --tenue: #8b949e;
-        --acento: #4493f8;
+        --borde: #1E4368;
+        --fondo: #071726;
+        --panel: #0E2438;
+        --texto: #E9EFF7;
+        --tenue: #8FA3BC;
+        --acento: #5E9AD8;
+        --acento-suave: rgba(94,154,216,.18);
+        --ok: #3FAE77;
+        --mal: #E8535A;
       }
     }
     * { box-sizing: border-box; }
@@ -80,7 +86,7 @@
       font-size: .8rem; font-family: ui-monospace, "SF Mono", monospace;
     }
     .pod {
-      background: rgba(9,105,218,.12); padding: .15rem .45rem;
+      background: var(--acento-suave); padding: .15rem .45rem;
       border-radius: 4px; font-weight: 700;
     }
     /* Cabecera: título a la izquierda, acceso a la presentación a la derecha */
@@ -118,10 +124,10 @@
     }
     .estado { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; }
     .luz { width: .5rem; height: .5rem; border-radius: 50%; background: var(--tenue); }
-    .estado.ok .luz  { background: #1a7f37; }
-    .estado.ok       { color: #0a5c2e; }
-    .estado.mal .luz { background: #cf222e; }
-    .estado.mal      { color: #82071e; }
+    .estado.ok .luz  { background: var(--ok); }
+    .estado.ok       { color: var(--ok); }
+    .estado.mal .luz { background: var(--mal); }
+    .estado.mal      { color: var(--mal); }
   </style>
 </head>
 <body>
