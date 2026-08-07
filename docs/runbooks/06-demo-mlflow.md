@@ -9,6 +9,15 @@ operativa. Ensayarlas antes.
 
 ---
 
+> **En cada sesión SSH nueva, exporta primero `KUBECONFIG`.** Sin ello
+> `kubectl` intenta leer `/etc/rancher/k3s/k3s.yaml`, que solo root puede
+> abrir, y falla con `permission denied`. La línea está en `~/.bashrc`, pero
+> las terminales abiertas antes de añadirla no la recogen.
+>
+> ```bash
+> export KUBECONFIG=~/.kube/config
+> ```
+
 ## 1. Abrir el experimento y explicar qué representa cada run
 
 Experimento: **`telco-churn-experimento`**, seis runs.
